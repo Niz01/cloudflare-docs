@@ -15,6 +15,7 @@ import ChessBoard from '../../src/components/ChessBoard';
 import { useAuthStore } from '../../src/store/authStore';
 import { gameApi } from '../../src/utils/api';
 import { getBestMove } from '../../src/utils/chessAI';
+import { ChessSounds } from '../../src/utils/chessSounds';
 
 export default function GameScreen() {
   const params = useLocalSearchParams();
@@ -34,6 +35,12 @@ export default function GameScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
 
+  // Initialize sounds on mount
+  useEffect(() => {
+    ChessSounds.init();
+    ChessSounds.gameStart();
+  }, []);
+
   // Make AI move when it's computer's turn
   useEffect(() => {
     if (mode === 'computer' && !isPlayerTurn && gameStatus === 'playing') {
@@ -45,7 +52,20 @@ export default function GameScreen() {
     setTimeout(() => {
       const aiMove = getBestMove(chess, aiLevel as any);
       if (aiMove) {
+        const targetPiece = chess.get(aiMove.to as any);
         chess.move(aiMove);
+        
+        // Play sound for AI move
+        if (chess.isCheckmate()) {
+          ChessSounds.checkmate();
+        } else if (chess.isCheck()) {
+          ChessSounds.check();
+        } else if (targetPiece) {
+          ChessSounds.capture();
+        } else {
+          ChessSounds.move();
+        }
+        
         updateGameState();
         setIsPlayerTurn(true);
         
@@ -99,12 +119,14 @@ export default function GameScreen() {
     
     if (piece && piece.color === currentTurn) {
       // Select piece
+      ChessSounds.select();
       const moves = chess.moves({ square: square as any, verbose: true });
       setSelectedSquare(square);
       setValidMoves(moves.map(m => m.to));
     } else if (selectedSquare && validMoves.includes(square)) {
       // Make move
       const movingPiece = chess.get(selectedSquare as any);
+      const targetPiece = chess.get(square as any);
       let promotion: string | undefined;
       
       // Auto-promote to queen
@@ -120,6 +142,19 @@ export default function GameScreen() {
         });
         
         if (move) {
+          // Play appropriate sound
+          if (chess.isCheckmate()) {
+            ChessSounds.checkmate();
+          } else if (chess.isDraw() || chess.isStalemate()) {
+            ChessSounds.draw();
+          } else if (chess.isCheck()) {
+            ChessSounds.check();
+          } else if (targetPiece) {
+            ChessSounds.capture();
+          } else {
+            ChessSounds.move();
+          }
+          
           updateGameState();
           
           if (mode === 'computer') {
@@ -140,6 +175,7 @@ export default function GameScreen() {
           }
         }
       } catch (error) {
+        ChessSounds.invalid();
         console.error('Invalid move:', error);
       }
     } else {
@@ -176,6 +212,7 @@ export default function GameScreen() {
     setIsPlayerTurn(true);
     setGameStatus('playing');
     setMoveHistory([]);
+    ChessSounds.gameStart();
   };
 
   const getTurnText = () => {
