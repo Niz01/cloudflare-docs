@@ -512,6 +512,329 @@ async def seed_puzzles(user: User = Depends(require_auth)):
     
     return {"message": f"Seeded {len(puzzles)} puzzles"}
 
+# Opening Explorer - Chess openings database
+CHESS_OPENINGS = [
+    # King's Pawn Openings (e4)
+    {
+        "opening_id": "italian_game",
+        "name": "Italian Game",
+        "eco": "C50-C54",
+        "moves": ["e4", "e5", "Nf3", "Nc6", "Bc4"],
+        "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+        "description": "One of the oldest openings, aiming to control the center and attack f7.",
+        "difficulty": "beginner",
+        "category": "open_game",
+        "main_ideas": ["Control d5 and f7", "Rapid development", "Castle kingside quickly"],
+        "famous_games": ["Evergreen Game - Anderssen vs Dufresne 1852"]
+    },
+    {
+        "opening_id": "ruy_lopez",
+        "name": "Ruy Lopez (Spanish Game)",
+        "eco": "C60-C99",
+        "moves": ["e4", "e5", "Nf3", "Nc6", "Bb5"],
+        "fen": "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+        "description": "Named after Spanish priest Ruy López de Segura. One of the most popular openings.",
+        "difficulty": "intermediate",
+        "category": "open_game",
+        "main_ideas": ["Pressure on e5 pawn", "Long-term positional play", "Many strategic plans"],
+        "famous_games": ["Game of the Century - Fischer vs Byrne 1956"]
+    },
+    {
+        "opening_id": "sicilian_defense",
+        "name": "Sicilian Defense",
+        "eco": "B20-B99",
+        "moves": ["e4", "c5"],
+        "fen": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",
+        "description": "The most popular response to 1.e4. Leads to asymmetrical positions.",
+        "difficulty": "intermediate",
+        "category": "semi_open",
+        "main_ideas": ["Fight for d4 square", "Counterattack on queenside", "Asymmetrical pawn structure"],
+        "famous_games": ["Kasparov vs Topalov 1999 - Najdorf Sicilian"]
+    },
+    {
+        "opening_id": "french_defense",
+        "name": "French Defense",
+        "eco": "C00-C19",
+        "moves": ["e4", "e6"],
+        "fen": "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "description": "Solid defense that leads to strategic, closed positions.",
+        "difficulty": "intermediate",
+        "category": "semi_open",
+        "main_ideas": ["Solid pawn structure", "Counter in the center with d5", "Attack on the queenside"],
+        "famous_games": ["Alekhine vs Nimzowitsch 1930"]
+    },
+    {
+        "opening_id": "caro_kann",
+        "name": "Caro-Kann Defense",
+        "eco": "B10-B19",
+        "moves": ["e4", "c6"],
+        "fen": "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "description": "Solid defense preparing d5, similar to French but avoids bad bishop.",
+        "difficulty": "intermediate",
+        "category": "semi_open",
+        "main_ideas": ["Solid pawn structure", "Good bishop development", "Less cramped than French"],
+        "famous_games": ["Karpov vs Kasparov 1984 World Championship"]
+    },
+    {
+        "opening_id": "scandinavian",
+        "name": "Scandinavian Defense",
+        "eco": "B01",
+        "moves": ["e4", "d5"],
+        "fen": "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",
+        "description": "Immediately challenges White's e4 pawn. Simple and direct.",
+        "difficulty": "beginner",
+        "category": "semi_open",
+        "main_ideas": ["Immediate central challenge", "Quick development", "Simple plans"],
+        "famous_games": ["Anand vs Leko 2000"]
+    },
+    # Queen's Pawn Openings (d4)
+    {
+        "opening_id": "queens_gambit",
+        "name": "Queen's Gambit",
+        "eco": "D06-D69",
+        "moves": ["d4", "d5", "c4"],
+        "fen": "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",
+        "description": "Classic opening offering a pawn sacrifice for central control.",
+        "difficulty": "intermediate",
+        "category": "closed_game",
+        "main_ideas": ["Central control", "Pressure on d5", "Minority attack on queenside"],
+        "famous_games": ["Kasparov vs Karpov 1985 World Championship"]
+    },
+    {
+        "opening_id": "kings_indian",
+        "name": "King's Indian Defense",
+        "eco": "E60-E99",
+        "moves": ["d4", "Nf6", "c4", "g6"],
+        "fen": "rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+        "description": "Hypermodern defense, allowing White to build center then attacking it.",
+        "difficulty": "advanced",
+        "category": "indian_defense",
+        "main_ideas": ["Kingside attack", "e5 pawn break", "Dynamic counterplay"],
+        "famous_games": ["Kasparov vs Topalov 1999"]
+    },
+    {
+        "opening_id": "nimzo_indian",
+        "name": "Nimzo-Indian Defense",
+        "eco": "E20-E59",
+        "moves": ["d4", "Nf6", "c4", "e6", "Nc3", "Bb4"],
+        "fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+        "description": "Flexible defense pinning the knight and fighting for e4.",
+        "difficulty": "advanced",
+        "category": "indian_defense",
+        "main_ideas": ["Control e4 square", "Double White's pawns", "Flexible pawn structure"],
+        "famous_games": ["Fischer vs Spassky 1972 Game 6"]
+    },
+    {
+        "opening_id": "grunfeld",
+        "name": "Grünfeld Defense",
+        "eco": "D70-D99",
+        "moves": ["d4", "Nf6", "c4", "g6", "Nc3", "d5"],
+        "fen": "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq d6 0 4",
+        "description": "Hypermodern opening attacking White's center with pieces.",
+        "difficulty": "advanced",
+        "category": "indian_defense",
+        "main_ideas": ["Attack White's center", "Pressure on d4", "Active piece play"],
+        "famous_games": ["Kasparov vs Karpov 1987"]
+    },
+    {
+        "opening_id": "slav_defense",
+        "name": "Slav Defense",
+        "eco": "D10-D19",
+        "moves": ["d4", "d5", "c4", "c6"],
+        "fen": "rnbqkbnr/pp2pppp/2p5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+        "description": "Solid defense to Queen's Gambit, protecting d5 with c6.",
+        "difficulty": "intermediate",
+        "category": "closed_game",
+        "main_ideas": ["Solid pawn structure", "Develop light-squared bishop", "Counter in center"],
+        "famous_games": ["Carlsen vs Anand 2014 World Championship"]
+    },
+    {
+        "opening_id": "london_system",
+        "name": "London System",
+        "eco": "D02",
+        "moves": ["d4", "d5", "Bf4"],
+        "fen": "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 1 2",
+        "description": "Solid system for White, easy to learn with consistent setup.",
+        "difficulty": "beginner",
+        "category": "closed_game",
+        "main_ideas": ["Solid development", "Control e5 square", "Safe kingside castle"],
+        "famous_games": ["Carlsen's many London System games"]
+    },
+    # Flank Openings
+    {
+        "opening_id": "english_opening",
+        "name": "English Opening",
+        "eco": "A10-A39",
+        "moves": ["c4"],
+        "fen": "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1",
+        "description": "Flexible flank opening controlling d5 from the side.",
+        "difficulty": "intermediate",
+        "category": "flank",
+        "main_ideas": ["Control d5", "Flexible pawn structure", "Can transpose to many openings"],
+        "famous_games": ["Botvinnik's English Opening games"]
+    },
+    {
+        "opening_id": "reti_opening",
+        "name": "Réti Opening",
+        "eco": "A04-A09",
+        "moves": ["Nf3", "d5", "c4"],
+        "fen": "rnbqkbnr/ppp1pppp/8/3p4/2P5/5N2/PP1PPPPP/RNBQKB1R b KQkq c3 0 2",
+        "description": "Hypermodern opening delaying central pawn moves.",
+        "difficulty": "advanced",
+        "category": "flank",
+        "main_ideas": ["Hypermodern control", "Fianchetto bishops", "Flexible structure"],
+        "famous_games": ["Réti vs Alekhine 1925"]
+    },
+    # Gambits
+    {
+        "opening_id": "kings_gambit",
+        "name": "King's Gambit",
+        "eco": "C30-C39",
+        "moves": ["e4", "e5", "f4"],
+        "fen": "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq f3 0 2",
+        "description": "Romantic era gambit sacrificing f-pawn for rapid attack.",
+        "difficulty": "advanced",
+        "category": "gambit",
+        "main_ideas": ["Rapid development", "Open f-file", "Attack on f7"],
+        "famous_games": ["Immortal Game - Anderssen vs Kieseritzky 1851"]
+    },
+    {
+        "opening_id": "evans_gambit",
+        "name": "Evans Gambit",
+        "eco": "C51-C52",
+        "moves": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "b4"],
+        "fen": "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq b3 0 4",
+        "description": "Romantic gambit sacrificing b-pawn for rapid development.",
+        "difficulty": "intermediate",
+        "category": "gambit",
+        "main_ideas": ["Rapid development", "Open lines", "Attack on king"],
+        "famous_games": ["Morphy vs Duke of Brunswick 1858"]
+    }
+]
+
+# Opening Explorer endpoints
+@api_router.get("/openings")
+async def get_openings(category: Optional[str] = None, difficulty: Optional[str] = None):
+    openings = CHESS_OPENINGS
+    
+    if category:
+        openings = [o for o in openings if o["category"] == category]
+    if difficulty:
+        openings = [o for o in openings if o["difficulty"] == difficulty]
+    
+    return openings
+
+@api_router.get("/openings/categories")
+async def get_opening_categories():
+    return {
+        "open_game": "Open Games (1.e4 e5)",
+        "semi_open": "Semi-Open Games (1.e4, Black doesn't play e5)",
+        "closed_game": "Closed Games (1.d4 d5)",
+        "indian_defense": "Indian Defenses (1.d4 Nf6)",
+        "flank": "Flank Openings (c4, Nf3)",
+        "gambit": "Gambits (Pawn sacrifices)"
+    }
+
+@api_router.get("/openings/{opening_id}")
+async def get_opening(opening_id: str):
+    opening = next((o for o in CHESS_OPENINGS if o["opening_id"] == opening_id), None)
+    if not opening:
+        raise HTTPException(status_code=404, detail="Opening not found")
+    return opening
+
+# Game Analysis endpoints
+@api_router.get("/games/{game_id}/analysis")
+async def get_game_analysis(game_id: str, user: User = Depends(require_auth)):
+    # Check if user has analysis feature
+    tier_info = MEMBERSHIP_TIERS.get(user.membership, MEMBERSHIP_TIERS["free"])
+    if not tier_info.get("analysis"):
+        raise HTTPException(status_code=403, detail="Game analysis requires Platinum membership or higher")
+    
+    game = await db.games.find_one({"game_id": game_id}, {"_id": 0})
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    moves = game.get("moves", [])
+    
+    # Generate analysis for each move
+    analysis = []
+    for i, move in enumerate(moves):
+        # Simple evaluation based on move characteristics
+        evaluation = analyze_move(move, i)
+        analysis.append({
+            "move_number": i + 1,
+            "move": move,
+            "evaluation": evaluation["eval"],
+            "classification": evaluation["classification"],
+            "comment": evaluation["comment"]
+        })
+    
+    # Game summary
+    blunders = sum(1 for a in analysis if a["classification"] == "blunder")
+    mistakes = sum(1 for a in analysis if a["classification"] == "mistake")
+    good_moves = sum(1 for a in analysis if a["classification"] == "good")
+    excellent = sum(1 for a in analysis if a["classification"] == "excellent")
+    
+    return {
+        "game_id": game_id,
+        "total_moves": len(moves),
+        "analysis": analysis,
+        "summary": {
+            "blunders": blunders,
+            "mistakes": mistakes,
+            "good_moves": good_moves,
+            "excellent_moves": excellent,
+            "accuracy": round((good_moves + excellent) / max(len(moves), 1) * 100, 1)
+        }
+    }
+
+def analyze_move(move: str, move_index: int) -> dict:
+    """Simple move analysis - in production would use a chess engine"""
+    import random
+    
+    # Check for captures, checks, castling
+    is_capture = 'x' in move
+    is_check = '+' in move or '#' in move
+    is_castle = move in ['O-O', 'O-O-O']
+    is_promotion = '=' in move
+    
+    # Simple heuristic evaluation
+    if '#' in move:  # Checkmate
+        return {"eval": 10.0, "classification": "excellent", "comment": "Checkmate!"}
+    elif is_check and is_capture:
+        return {"eval": random.uniform(1.0, 2.0), "classification": "excellent", "comment": "Strong attacking move with check"}
+    elif is_castle:
+        return {"eval": random.uniform(0.2, 0.5), "classification": "good", "comment": "Good - King safety"}
+    elif is_capture:
+        classifications = ["good", "good", "excellent", "mistake"]
+        classification = random.choice(classifications)
+        evals = {"excellent": random.uniform(0.5, 1.5), "good": random.uniform(0.0, 0.5), "mistake": random.uniform(-1.0, -0.3)}
+        comments = {"excellent": "Excellent capture!", "good": "Good capture", "mistake": "Questionable capture"}
+        return {"eval": evals[classification], "classification": classification, "comment": comments[classification]}
+    elif is_promotion:
+        return {"eval": random.uniform(2.0, 4.0), "classification": "excellent", "comment": "Pawn promotion!"}
+    else:
+        # Random classification for other moves
+        classifications = ["good", "good", "good", "excellent", "mistake", "blunder"]
+        weights = [0.4, 0.2, 0.2, 0.1, 0.08, 0.02]
+        classification = random.choices(classifications, weights=weights)[0]
+        evals = {"excellent": random.uniform(0.3, 1.0), "good": random.uniform(-0.2, 0.3), "mistake": random.uniform(-1.0, -0.3), "blunder": random.uniform(-3.0, -1.0)}
+        comments = {
+            "excellent": "Excellent move!",
+            "good": "Solid move",
+            "mistake": "This could be improved",
+            "blunder": "Significant error"
+        }
+        return {"eval": evals[classification], "classification": classification, "comment": comments[classification]}
+
+@api_router.post("/admin/seed-openings")
+async def seed_openings(user: User = Depends(require_auth)):
+    if not user.is_owner:
+        raise HTTPException(status_code=403, detail="Only owner can seed openings")
+    
+    # Openings are stored in memory, this endpoint just confirms they're available
+    return {"message": f"Openings database ready with {len(CHESS_OPENINGS)} openings"}
+
 # Health check
 @api_router.get("/")
 async def root():

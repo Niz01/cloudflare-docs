@@ -238,7 +238,23 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Recent Games</Text>
         {gameHistory.length > 0 ? (
           gameHistory.map((game, index) => (
-            <View key={index} style={styles.gameItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.gameItem}
+              onPress={() => {
+                const canAnalyze = user?.membership === 'platinum' || 
+                                   user?.membership === 'diamond' || 
+                                   user?.is_owner;
+                if (canAnalyze && game.moves?.length > 0) {
+                  router.push({
+                    pathname: '/analysis/[gameId]',
+                    params: { gameId: game.game_id }
+                  });
+                } else if (!canAnalyze) {
+                  Alert.alert('Premium Feature', 'Game analysis requires Platinum membership or higher');
+                }
+              }}
+            >
               <Ionicons
                 name={game.status === 'checkmate' ? 'trophy' : 'game-controller'}
                 size={20}
@@ -252,7 +268,12 @@ export default function ProfileScreen() {
                   {game.status} - {game.moves?.length || 0} moves
                 </Text>
               </View>
-            </View>
+              {(user?.membership === 'platinum' || user?.membership === 'diamond' || user?.is_owner) && game.moves?.length > 0 && (
+                <View style={styles.analyzeButton}>
+                  <Ionicons name="analytics" size={16} color="#9B59B6" />
+                </View>
+              )}
+            </TouchableOpacity>
           ))
         ) : (
           <Text style={styles.noGames}>No games played yet</Text>
@@ -456,6 +477,7 @@ const styles = StyleSheet.create({
   },
   gameInfo: {
     marginLeft: 12,
+    flex: 1,
   },
   gameMode: {
     fontSize: 14,
@@ -466,6 +488,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888888',
     marginTop: 2,
+  },
+  analyzeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noGames: {
     fontSize: 14,

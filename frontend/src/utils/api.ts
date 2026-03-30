@@ -143,4 +143,67 @@ export const adminApi = {
   },
 };
 
+// Openings
+export interface Opening {
+  opening_id: string;
+  name: string;
+  eco: string;
+  moves: string[];
+  fen: string;
+  description: string;
+  difficulty: string;
+  category: string;
+  main_ideas: string[];
+  famous_games: string[];
+}
+
+export const openingsApi = {
+  getOpenings: async (category?: string, difficulty?: string): Promise<Opening[]> => {
+    const params: any = {};
+    if (category) params.category = category;
+    if (difficulty) params.difficulty = difficulty;
+    const response = await api.get('/openings', { params });
+    return response.data;
+  },
+  
+  getCategories: async (): Promise<Record<string, string>> => {
+    const response = await api.get('/openings/categories');
+    return response.data;
+  },
+  
+  getOpening: async (openingId: string): Promise<Opening> => {
+    const response = await api.get(`/openings/${openingId}`);
+    return response.data;
+  },
+};
+
+// Analysis
+export interface MoveAnalysis {
+  move_number: number;
+  move: string;
+  evaluation: number;
+  classification: 'excellent' | 'good' | 'mistake' | 'blunder';
+  comment: string;
+}
+
+export interface GameAnalysis {
+  game_id: string;
+  total_moves: number;
+  analysis: MoveAnalysis[];
+  summary: {
+    blunders: number;
+    mistakes: number;
+    good_moves: number;
+    excellent_moves: number;
+    accuracy: number;
+  };
+}
+
+export const analysisApi = {
+  getGameAnalysis: async (gameId: string): Promise<GameAnalysis> => {
+    const response = await api.get(`/games/${gameId}/analysis`);
+    return response.data;
+  },
+};
+
 export default api;
