@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
 from fastapi.security import HTTPBearer
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -2814,6 +2815,17 @@ async def root():
 @api_router.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@api_router.get("/download/web-build")
+async def download_web_build():
+    zip_path = Path(__file__).parent / "chess-master-web.zip"
+    if not zip_path.exists():
+        raise HTTPException(status_code=404, detail="Web build not found")
+    return FileResponse(
+        path=str(zip_path),
+        filename="chess-master-web.zip",
+        media_type="application/zip"
+    )
 
 # Include router
 app.include_router(api_router)
