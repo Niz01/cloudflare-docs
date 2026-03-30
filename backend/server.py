@@ -28,9 +28,9 @@ security = HTTPBearer(auto_error=False)
 # Membership Tiers
 MEMBERSHIP_TIERS = {
     "free": {"name": "Free", "price": 0, "ai_levels": ["beginner"], "puzzle_limit": 5, "analysis": False},
-    "gold": {"name": "Gold", "price": 4.99, "ai_levels": ["beginner", "intermediate"], "puzzle_limit": 20, "analysis": False},
-    "platinum": {"name": "Platinum", "price": 9.99, "ai_levels": ["beginner", "intermediate", "advanced"], "puzzle_limit": -1, "analysis": True},
-    "diamond": {"name": "Diamond", "price": 19.99, "ai_levels": ["beginner", "intermediate", "advanced", "master"], "puzzle_limit": -1, "analysis": True},
+    "gold": {"name": "Gold", "price": 2.99, "ai_levels": ["beginner", "intermediate"], "puzzle_limit": 25, "analysis": False},
+    "platinum": {"name": "Platinum", "price": 5.99, "ai_levels": ["beginner", "intermediate", "advanced"], "puzzle_limit": -1, "analysis": True},
+    "diamond": {"name": "Diamond", "price": 9.99, "ai_levels": ["beginner", "intermediate", "advanced", "master"], "puzzle_limit": -1, "analysis": True},
     "owner": {"name": "Owner", "price": 0, "ai_levels": ["beginner", "intermediate", "advanced", "master"], "puzzle_limit": -1, "analysis": True}
 }
 
@@ -543,6 +543,54 @@ async def seed_puzzles(user: User = Depends(require_auth)):
         {"puzzle_id": "i013", "fen": "r1bqk2r/pppn1ppp/4pn2/3p4/1bPP4/2N1PN2/PP3PPP/R1BQKB1R w KQkq - 4 6", "solution": ["a3", "Ba5", "Bd3", "c5", "b4", "cxd4", "bxa5"], "difficulty": "impossible", "rating": 2280, "theme": "nimzo_rubinstein"},
         {"puzzle_id": "i014", "fen": "r1bq1rk1/pp2bppp/2n1pn2/2Pp4/3P4/2NBPN2/PP3PPP/R1BQ1RK1 b - - 0 9", "solution": ["e5", "dxe5", "Nxe5", "Nxe5", "Bxe5", "Nd7", "Bf4"], "difficulty": "impossible", "rating": 2380, "theme": "exchange_qgd"},
         {"puzzle_id": "i015", "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R b KQkq - 0 5", "solution": ["a6", "O-O", "Ba7", "Be3", "Bxe3", "fxe3", "d6"], "difficulty": "impossible", "rating": 2480, "theme": "italian_slow"},
+        
+        # ===== MORE EASY PUZZLES =====
+        {"puzzle_id": "e016", "fen": "r1bqk2r/pppp1Npp/2n2n2/2b1p3/2B1P3/8/PPPP1PPP/RNBQK2R b KQkq - 0 5", "solution": ["Qe7"], "difficulty": "easy", "rating": 520, "theme": "defend_piece"},
+        {"puzzle_id": "e017", "fen": "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d6 0 3", "solution": ["exd5"], "difficulty": "easy", "rating": 480, "theme": "capture"},
+        {"puzzle_id": "e018", "fen": "rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4", "solution": ["cxd5"], "difficulty": "easy", "rating": 510, "theme": "exchange"},
+        {"puzzle_id": "e019", "fen": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", "solution": ["c3"], "difficulty": "easy", "rating": 490, "theme": "development"},
+        {"puzzle_id": "e020", "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2", "solution": ["Nc6"], "difficulty": "easy", "rating": 450, "theme": "development"},
+        {"puzzle_id": "e021", "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", "solution": ["Bc4"], "difficulty": "easy", "rating": 470, "theme": "development"},
+        {"puzzle_id": "e022", "fen": "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", "solution": ["Nxe5"], "difficulty": "easy", "rating": 550, "theme": "win_pawn"},
+        {"puzzle_id": "e023", "fen": "r1bqkbnr/pppp1ppp/2n5/4N3/4P3/8/PPPP1PPP/RNBQKB1R b KQkq - 0 3", "solution": ["Nxe5"], "difficulty": "easy", "rating": 530, "theme": "recapture"},
+        {"puzzle_id": "e024", "fen": "rnb1kbnr/ppppqppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR w KQkq - 1 3", "solution": ["Qh5+"], "difficulty": "easy", "rating": 580, "theme": "check"},
+        {"puzzle_id": "e025", "fen": "rnbqkbnr/pp2pppp/2p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3", "solution": ["Bf5"], "difficulty": "easy", "rating": 560, "theme": "development"},
+        
+        # ===== MORE MEDIUM PUZZLES =====
+        {"puzzle_id": "m016", "fen": "r1bqkbnr/pp1ppppp/2n5/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq c6 0 3", "solution": ["d4", "cxd4", "Nxd4"], "difficulty": "medium", "rating": 980, "theme": "open_sicilian"},
+        {"puzzle_id": "m017", "fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4", "solution": ["e3", "O-O", "Bd3"], "difficulty": "medium", "rating": 1040, "theme": "nimzo_indian"},
+        {"puzzle_id": "m018", "fen": "rnbqkb1r/pp2pppp/5n2/2ppP3/3P4/2N5/PPP2PPP/R1BQKBNR b KQkq - 0 4", "solution": ["Nfd7", "f4", "Nc6"], "difficulty": "medium", "rating": 1090, "theme": "advance_variation"},
+        {"puzzle_id": "m019", "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", "solution": ["Bc5", "c3", "Nf6"], "difficulty": "medium", "rating": 920, "theme": "giuoco_piano"},
+        {"puzzle_id": "m020", "fen": "rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R b KQkq - 1 4", "solution": ["Be7", "Bf4", "O-O"], "difficulty": "medium", "rating": 1010, "theme": "qgd_orthodox"},
+        {"puzzle_id": "m021", "fen": "rnbqkb1r/pp2pppp/2p2n2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R b KQkq - 1 4", "solution": ["e6", "e3", "Nbd7"], "difficulty": "medium", "rating": 1050, "theme": "semi_slav"},
+        {"puzzle_id": "m022", "fen": "rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3", "solution": ["Nc3", "Bg7", "e4"], "difficulty": "medium", "rating": 1080, "theme": "kings_indian_setup"},
+        {"puzzle_id": "m023", "fen": "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3", "solution": ["Nc3", "Bb4", "e3"], "difficulty": "medium", "rating": 1020, "theme": "nimzo_indian_setup"},
+        {"puzzle_id": "m024", "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq d3 0 3", "solution": ["exd4", "Nxd4", "Nf6"], "difficulty": "medium", "rating": 970, "theme": "scotch_response"},
+        {"puzzle_id": "m025", "fen": "rnbqkb1r/pppp1ppp/5n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", "solution": ["Nxe4", "d4", "d5"], "difficulty": "medium", "rating": 1130, "theme": "two_knights_trap"},
+        
+        # ===== MORE HARD PUZZLES =====
+        {"puzzle_id": "h016", "fen": "r1bq1rk1/ppp2ppp/2n1pn2/3p4/1bPP4/2NBPN2/PP3PPP/R1BQK2R w KQ - 5 7", "solution": ["O-O", "dxc4", "Bxc4", "b5", "Bd3"], "difficulty": "hard", "rating": 1530, "theme": "qid_main_line"},
+        {"puzzle_id": "h017", "fen": "r2qkb1r/pp1bpppp/2np1n2/1B6/3NP3/2N5/PPP2PPP/R1BQK2R b KQkq - 5 7", "solution": ["e6", "O-O", "Be7", "Bxc6", "bxc6"], "difficulty": "hard", "rating": 1610, "theme": "sicilian_richter_rauzer"},
+        {"puzzle_id": "h018", "fen": "r1bqk2r/pp1nbppp/2p1p3/3p4/2PP4/2NBPN2/PP3PPP/R1BQK2R b KQkq - 2 7", "solution": ["Nf8", "O-O", "Ng6", "Re1", "Be7"], "difficulty": "hard", "rating": 1680, "theme": "caro_kann_classical"},
+        {"puzzle_id": "h019", "fen": "r1bqkb1r/pp1n1ppp/2p1pn2/3p4/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQkq - 0 6", "solution": ["Bd3", "dxc4", "Bxc4", "b5", "Bd3"], "difficulty": "hard", "rating": 1570, "theme": "meran_variation"},
+        {"puzzle_id": "h020", "fen": "rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5", "solution": ["Bg5", "h6", "Bxf6", "Bxf6", "e3"], "difficulty": "hard", "rating": 1650, "theme": "qgd_exchange"},
+        {"puzzle_id": "h021", "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQK2R b KQkq - 0 4", "solution": ["Nxe4", "d4", "exd3", "Qb3", "Qe7"], "difficulty": "hard", "rating": 1720, "theme": "italian_gambit"},
+        {"puzzle_id": "h022", "fen": "r2qkbnr/ppp2ppp/2np4/4p1B1/4P1b1/2NP1N2/PPP2PPP/R2QKB1R b KQkq - 3 5", "solution": ["Qf6", "Be3", "Bxf3", "Qxf3", "Qxf3"], "difficulty": "hard", "rating": 1580, "theme": "philidor_attack"},
+        {"puzzle_id": "h023", "fen": "rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/5NP1/PP2PP1P/RNBQKB1R b KQkq - 0 5", "solution": ["dxc4", "Bg2", "Nc6", "O-O", "O-O"], "difficulty": "hard", "rating": 1630, "theme": "catalan_open"},
+        {"puzzle_id": "h024", "fen": "r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 b - - 0 6", "solution": ["d6", "Bg5", "h6", "Bh4", "g5"], "difficulty": "hard", "rating": 1690, "theme": "italian_anti_berlin"},
+        {"puzzle_id": "h025", "fen": "r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4", "solution": ["Bxc6", "dxc6", "Nxe5", "Qd4", "Nf3"], "difficulty": "hard", "rating": 1740, "theme": "ruy_lopez_exchange"},
+        
+        # ===== MORE IMPOSSIBLE PUZZLES =====
+        {"puzzle_id": "i016", "fen": "r1bq1rk1/pp1nbppp/2p1pn2/3p4/2PP4/2N1PN2/PPB2PPP/R1BQ1RK1 w - - 4 9", "solution": ["b3", "a5", "a4", "Ba6", "Bb2", "Rc8", "Qe2"], "difficulty": "impossible", "rating": 2020, "theme": "carlsbad_structure"},
+        {"puzzle_id": "i017", "fen": "r2q1rk1/ppp1bppp/2n1bn2/3pp3/4P3/1NN1BP2/PPP3PP/R2QKB1R w KQ - 0 9", "solution": ["Nxd5", "Nxd5", "exd5", "Bxb3", "dxe6", "Bxa2", "exf7+"], "difficulty": "impossible", "rating": 2130, "theme": "pawn_sacrifice"},
+        {"puzzle_id": "i018", "fen": "r1b1kb1r/1pqn1ppp/p2ppn2/8/3NP3/2N1B3/PPP1BPPP/R2QK2R w KQkq - 0 9", "solution": ["f4", "e5", "fxe5", "dxe5", "Nf5", "Qd8", "Bc4"], "difficulty": "impossible", "rating": 2220, "theme": "najdorf_english_attack"},
+        {"puzzle_id": "i019", "fen": "r1bqk2r/pp1nbppp/2p1p3/3pP3/2PP4/2N2N2/PP3PPP/R1BQKB1R b KQkq - 0 7", "solution": ["f6", "Bd3", "Nc5", "Bc2", "fxe5", "dxe5", "Nd7"], "difficulty": "impossible", "rating": 2320, "theme": "advance_french_main"},
+        {"puzzle_id": "i020", "fen": "r1bq1rk1/pp2bppp/2n1pn2/2Pp4/3P4/2NBPN2/PP3PPP/R1BQ1RK1 b - - 0 9", "solution": ["e5", "dxe5", "Nxe5", "Nxe5", "Bxe5", "Nd7", "Bg3"], "difficulty": "impossible", "rating": 2420, "theme": "exchange_queens_gambit"},
+        {"puzzle_id": "i021", "fen": "rnbqk2r/ppp1bppp/4pn2/3p2B1/2PP4/2N5/PP2PPPP/R2QKBNR w KQkq - 2 5", "solution": ["e3", "h6", "Bh4", "O-O", "Nf3", "Ne4", "Bxe7"], "difficulty": "impossible", "rating": 2050, "theme": "qgd_lasker"},
+        {"puzzle_id": "i022", "fen": "r1bqk2r/pp1nbppp/2p1p3/3p4/2PP4/2NBPN2/PP3PPP/R1BQK2R b KQkq - 2 7", "solution": ["Ngf6", "O-O", "O-O", "b3", "b6", "Bb2", "Bb7"], "difficulty": "impossible", "rating": 2150, "theme": "semi_slav_meran"},
+        {"puzzle_id": "i023", "fen": "r1bq1rk1/pppnbppp/4p3/3pP2n/3P4/2NBBN2/PPP2PPP/R2QK2R w KQ - 5 9", "solution": ["g4", "Ng7", "Qd2", "c5", "dxc5", "Nxc5", "Bd4"], "difficulty": "impossible", "rating": 2250, "theme": "french_winawer"},
+        {"puzzle_id": "i024", "fen": "r1b1k2r/ppppqppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 4 6", "solution": ["Bg5", "h6", "Bh4", "g5", "Nxg5", "hxg5", "Bxg5"], "difficulty": "impossible", "rating": 2350, "theme": "italian_evan_gambit"},
+        {"puzzle_id": "i025", "fen": "r1bqkb1r/pp1n1ppp/2p1pn2/3p4/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQkq - 0 6", "solution": ["Bd3", "dxc4", "Bxc4", "b5", "Bd3", "a6", "e4"], "difficulty": "impossible", "rating": 2450, "theme": "semi_slav_main"},
     ]
     
     # Clear existing and insert new
@@ -942,6 +990,175 @@ CHESS_OPENINGS = [
         "category": "gambit",
         "main_ideas": ["Rapid development", "Open c-file", "Initiative"],
         "famous_games": ["Ken Smith's games"]
+    },
+    # More Openings
+    {
+        "opening_id": "four_knights",
+        "name": "Four Knights Game",
+        "eco": "C46-C49",
+        "moves": ["e4", "e5", "Nf3", "Nc6", "Nc3", "Nf6"],
+        "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",
+        "description": "Symmetrical opening leading to balanced positions.",
+        "difficulty": "beginner",
+        "category": "open_game",
+        "main_ideas": ["Symmetrical development", "Solid structure", "Early equality"],
+        "famous_games": ["Many classical games"]
+    },
+    {
+        "opening_id": "queens_indian",
+        "name": "Queen's Indian Defense",
+        "eco": "E12-E19",
+        "moves": ["d4", "Nf6", "c4", "e6", "Nf3", "b6"],
+        "fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4",
+        "description": "Flexible defense with queenside fianchetto.",
+        "difficulty": "intermediate",
+        "category": "indian_defense",
+        "main_ideas": ["Control e4", "Queenside fianchetto", "Solid defense"],
+        "famous_games": ["Many Karpov games"]
+    },
+    {
+        "opening_id": "modern_defense",
+        "name": "Modern Defense",
+        "eco": "B06",
+        "moves": ["e4", "g6"],
+        "fen": "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "description": "Hypermodern defense with kingside fianchetto.",
+        "difficulty": "intermediate",
+        "category": "semi_open",
+        "main_ideas": ["Delay confrontation", "Fianchetto bishop", "Flexible structure"],
+        "famous_games": ["Tiger's Modern games"]
+    },
+    {
+        "opening_id": "kings_fianchetto",
+        "name": "King's Fianchetto Opening",
+        "eco": "A00",
+        "moves": ["g3"],
+        "fen": "rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq - 0 1",
+        "description": "Flexible opening aiming for kingside fianchetto.",
+        "difficulty": "beginner",
+        "category": "flank",
+        "main_ideas": ["Control long diagonal", "Flexible setup", "Safe king"],
+        "famous_games": ["Many hypermodern games"]
+    },
+    {
+        "opening_id": "colle_system",
+        "name": "Colle System",
+        "eco": "D05",
+        "moves": ["d4", "d5", "Nf3", "Nf6", "e3"],
+        "fen": "rnbqkb1r/ppp1pppp/5n2/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R b KQkq - 0 3",
+        "description": "Solid system aiming for e4 break.",
+        "difficulty": "beginner",
+        "category": "closed_game",
+        "main_ideas": ["Solid structure", "e4 pawn break", "Easy to learn"],
+        "famous_games": ["Colle's original games"]
+    },
+    {
+        "opening_id": "torre_attack",
+        "name": "Torre Attack",
+        "eco": "A46",
+        "moves": ["d4", "Nf6", "Nf3", "e6", "Bg5"],
+        "fen": "rnbqkb1r/pppp1ppp/4pn2/6B1/3P4/5N2/PPP1PPPP/RN1QKB1R b KQkq - 2 3",
+        "description": "System opening avoiding main lines.",
+        "difficulty": "intermediate",
+        "category": "closed_game",
+        "main_ideas": ["Pin knight", "Avoid theory", "Flexible setup"],
+        "famous_games": ["Torre's games"]
+    },
+    {
+        "opening_id": "tarrasch_defense",
+        "name": "Tarrasch Defense",
+        "eco": "D32-D34",
+        "moves": ["d4", "d5", "c4", "e6", "Nc3", "c5"],
+        "fen": "rnbqkbnr/pp3ppp/4p3/2pp4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq c6 0 4",
+        "description": "Active defense with isolated pawn.",
+        "difficulty": "advanced",
+        "category": "closed_game",
+        "main_ideas": ["Active pieces", "Accept isolated pawn", "Central control"],
+        "famous_games": ["Tarrasch's games"]
+    },
+    {
+        "opening_id": "old_indian",
+        "name": "Old Indian Defense",
+        "eco": "A53-A55",
+        "moves": ["d4", "Nf6", "c4", "d6"],
+        "fen": "rnbqkb1r/ppp1pppp/3p1n2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+        "description": "Solid defense leading to closed positions.",
+        "difficulty": "intermediate",
+        "category": "indian_defense",
+        "main_ideas": ["Solid structure", "e5 break", "Less theory"],
+        "famous_games": ["Many classical games"]
+    },
+    {
+        "opening_id": "budapest_gambit",
+        "name": "Budapest Gambit",
+        "eco": "A51-A52",
+        "moves": ["d4", "Nf6", "c4", "e5"],
+        "fen": "rnbqkb1r/pppp1ppp/5n2/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq e6 0 3",
+        "description": "Sharp gambit aiming for piece activity.",
+        "difficulty": "intermediate",
+        "category": "gambit",
+        "main_ideas": ["Active pieces", "Surprise value", "Tactical play"],
+        "famous_games": ["Budapest Gambit games"]
+    },
+    {
+        "opening_id": "stonewall_attack",
+        "name": "Stonewall Attack",
+        "eco": "D00",
+        "moves": ["d4", "d5", "e3", "Nf6", "Bd3", "e6", "f4"],
+        "fen": "rnbqkb1r/ppp2ppp/4pn2/3p4/3P1P2/3BP3/PPP3PP/RNBQK1NR b KQkq f3 0 4",
+        "description": "Solid pawn structure with kingside attack.",
+        "difficulty": "beginner",
+        "category": "closed_game",
+        "main_ideas": ["Solid pawns", "Kingside attack", "Easy to learn"],
+        "famous_games": ["Many amateur games"]
+    },
+    {
+        "opening_id": "blackmar_diemer",
+        "name": "Blackmar-Diemer Gambit",
+        "eco": "D00",
+        "moves": ["d4", "d5", "e4", "dxe4", "Nc3"],
+        "fen": "rnbqkbnr/ppp1pppp/8/8/3Pp3/2N5/PPP2PPP/R1BQKBNR b KQkq - 1 3",
+        "description": "Aggressive gambit for rapid development.",
+        "difficulty": "intermediate",
+        "category": "gambit",
+        "main_ideas": ["Fast development", "Open lines", "Attack"],
+        "famous_games": ["BDG thematic games"]
+    },
+    {
+        "opening_id": "ponziani",
+        "name": "Ponziani Opening",
+        "eco": "C44",
+        "moves": ["e4", "e5", "Nf3", "Nc6", "c3"],
+        "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2P2N2/PP1P1PPP/RNBQKB1R b KQkq - 0 3",
+        "description": "Solid opening preparing d4.",
+        "difficulty": "beginner",
+        "category": "open_game",
+        "main_ideas": ["Prepare d4", "Solid center", "Less theory"],
+        "famous_games": ["Classical games"]
+    },
+    {
+        "opening_id": "scheveningen",
+        "name": "Sicilian Scheveningen",
+        "eco": "B80-B89",
+        "moves": ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "e6"],
+        "fen": "rnbqkb1r/pp3ppp/3ppn2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+        "description": "Flexible Sicilian with small center.",
+        "difficulty": "advanced",
+        "category": "semi_open",
+        "main_ideas": ["Flexible pawn structure", "d5 or e5 breaks", "Rich middlegame"],
+        "famous_games": ["Kasparov's Scheveningen games"]
+    },
+    {
+        "opening_id": "accelerated_dragon",
+        "name": "Sicilian Accelerated Dragon",
+        "eco": "B34-B39",
+        "moves": ["e4", "c5", "Nf3", "Nc6", "d4", "cxd4", "Nxd4", "g6"],
+        "fen": "r1bqkbnr/pp1ppp1p/2n3p1/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
+        "description": "Early fianchetto avoiding the Yugoslav Attack.",
+        "difficulty": "intermediate",
+        "category": "semi_open",
+        "main_ideas": ["Quick fianchetto", "Avoid Yugoslav Attack", "Maroczy Bind risk"],
+        "famous_games": ["Many modern games"]
     }
 ]
 
