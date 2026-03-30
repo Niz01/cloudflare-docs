@@ -2855,6 +2855,13 @@ async def download_trailer():
         raise HTTPException(status_code=404, detail="Trailer not found")
     return FileResponse(path=str(video_path), filename="chess-master-trailer.mp4", media_type="video/mp4")
 
+@api_router.get("/download/gameplay-gif")
+async def download_gameplay_gif():
+    gif_path = Path(__file__).parent / "chess-master-gameplay.gif"
+    if not gif_path.exists():
+        raise HTTPException(status_code=404, detail="GIF not found")
+    return FileResponse(path=str(gif_path), filename="chess-master-gameplay.gif", media_type="image/gif")
+
 # Include router
 app.include_router(api_router)
 
