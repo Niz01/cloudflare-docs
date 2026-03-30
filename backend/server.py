@@ -2827,6 +2827,27 @@ async def download_web_build():
         media_type="application/zip"
     )
 
+@api_router.get("/download/cover-home")
+async def download_cover_home():
+    img_path = Path(__file__).parent / "cover_home.jpg"
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path=str(img_path), filename="chess-master-cover.jpg", media_type="image/jpeg")
+
+@api_router.get("/download/cover-game")
+async def download_cover_game():
+    img_path = Path(__file__).parent / "cover_game.jpg"
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path=str(img_path), filename="chess-master-gameplay.jpg", media_type="image/jpeg")
+
+@api_router.get("/download/cover-learn")
+async def download_cover_learn():
+    img_path = Path(__file__).parent / "cover_learn.jpg"
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path=str(img_path), filename="chess-master-openings.jpg", media_type="image/jpeg")
+
 # Include router
 app.include_router(api_router)
 
