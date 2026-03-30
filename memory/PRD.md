@@ -29,13 +29,13 @@ A chess.com-like mobile application built with Expo/React Native that allows use
 - 20 pre-seeded puzzles across all difficulties
 
 ### 4. Opening Explorer (NEW)
-- 16 chess openings across 6 categories:
-  - Open Games (Italian, Ruy Lopez, etc.)
-  - Semi-Open Games (Sicilian, French, Caro-Kann)
-  - Closed Games (Queen's Gambit, Slav, London)
-  - Indian Defenses (King's Indian, Nimzo-Indian, Grünfeld)
-  - Flank Openings (English, Réti)
-  - Gambits (King's Gambit, Evans Gambit)
+- 32 chess openings across 6 categories:
+  - Open Games (Italian, Ruy Lopez, Scotch, Vienna, Petrov, Philidor, Two Knights)
+  - Semi-Open Games (Sicilian, French, Caro-Kann, Scandinavian, Pirc, Alekhine, Najdorf, Dragon)
+  - Closed Games (Queen's Gambit, Slav, London, Dutch, Catalan, Trompowsky)
+  - Indian Defenses (King's Indian, Nimzo-Indian, Grünfeld, Benoni)
+  - Flank Openings (English, Réti, Bird)
+  - Gambits (King's Gambit, Evans, Benko, Smith-Morra)
 - Interactive board with move-by-move playthrough
 - ECO codes, key ideas, and famous games for each opening
 - Practice button to start a game with the opening
