@@ -1,0 +1,33 @@
+import React from 'react';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { View, StyleSheet } from 'react-native';
+
+export default function RootLayout() {
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#1a1a2e' },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="(auth)/callback" />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="game/[mode]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="puzzle/[difficulty]" options={{ presentation: 'card' }} />
+      </Stack>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+  },
+});

@@ -1,0 +1,100 @@
+# Auth Testing Playbook for Chess App
+
+## Step 1: Create Test User & Session
+
+```bash
+mongosh --eval "
+use('test_database');
+var userId = 'test-user-' + Date.now();
+var sessionToken = 'test_session_' + Date.now();
+db.users.insertOne({
+  user_id: userId,
+  email: 'test.user.' + Date.now() + '@example.com',
+  name: 'Test User',
+  picture: 'https://via.placeholder.com/150',
+  membership: 'owner',
+  is_owner: true,
+  puzzle_rating: 1200,
+  games_played: 5,
+  games_won: 3,
+  puzzles_solved: 10,
+  created_at: new Date()
+});
+db.user_sessions.insertOne({
+  user_id: userId,
+  session_token: sessionToken,
+  expires_at: new Date(Date.now() + 7*24*60*60*1000),
+  created_at: new Date()
+});
+print('Session token: ' + sessionToken);
+print('User ID: ' + userId);
+"
+```
+
+## Step 2: Test Backend API
+
+```bash
+# Test health
+curl -X GET "http://localhost:8001/api/health"
+
+# Test auth endpoint
+curl -X GET "http://localhost:8001/api/auth/me" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
+
+# Test membership tiers
+curl -X GET "http://localhost:8001/api/membership/tiers"
+
+# Test create game
+curl -X POST "http://localhost:8001/api/games" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -d '{"mode": "computer", "ai_level": "beginner"}'
+
+# Test puzzles (needs seeding first)
+curl -X POST "http://localhost:8001/api/admin/seed-puzzles" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
+
+curl -X GET "http://localhost:8001/api/puzzles?difficulty=easy" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
+```
+
+## Step 3: Browser Testing
+
+```javascript
+// Set cookie and navigate
+await page.context.add_cookies([{
+    "name": "session_token",
+    "value": "YOUR_SESSION_TOKEN",
+    "domain": "tactics-throne.preview.emergentagent.com",
+    "path": "/",
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+}]);
+await page.goto("https://tactics-throne.preview.emergentagent.com");
+```
+
+## Quick Debug
+
+```bash
+# Check data format
+mongosh --eval "
+use('test_database');
+db.users.find().limit(2).pretty();
+db.user_sessions.find().limit(2).pretty();
+"
+
+# Clean test data
+mongosh --eval "
+use('test_database');
+db.users.deleteMany({email: /test\.user\./});
+db.user_sessions.deleteMany({session_token: /test_session/});
+"
+```
+
+## Checklist
+- [ ] User document has user_id field
+- [ ] Session user_id matches user's user_id exactly
+- [ ] All queries use `{"_id": 0}` projection
+- [ ] API returns user data (not 401/404)
+- [ ] Browser loads app without redirect to login
