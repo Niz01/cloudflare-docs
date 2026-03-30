@@ -2848,6 +2848,13 @@ async def download_cover_learn():
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(path=str(img_path), filename="chess-master-openings.jpg", media_type="image/jpeg")
 
+@api_router.get("/download/trailer")
+async def download_trailer():
+    video_path = Path(__file__).parent / "chess-master-trailer.mp4"
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Trailer not found")
+    return FileResponse(path=str(video_path), filename="chess-master-trailer.mp4", media_type="video/mp4")
+
 # Include router
 app.include_router(api_router)
 
