@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal,
   ActivityIndicator, Alert, Dimensions, Platform,
@@ -7,6 +7,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Chess } from 'chess.js';
 import ChessBoard from '../src/components/ChessBoard';
+import { initEngine, searchMove, reportGameResult, clearTranspositionTable } from '../src/utils/chessEngineWorker';
 import { getBestMove } from '../src/utils/chessAI';
 import { ChessSounds } from '../src/utils/chessSounds';
 import { PUZZLES } from '../src/data/puzzleData';
@@ -294,25 +295,60 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
   const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'draw'>('playing');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [resultMsg, setResultMsg] = useState('');
+  const [searchInfo, setSearchInfo] = useState('');
+  const movesPlayedRef = useRef<string[]>([]);
+  const engineReady = useRef(false);
 
-  useEffect(() => { ChessSounds.init(); ChessSounds.gameStart(); }, []);
+  useEffect(() => {
+    ChessSounds.init(); ChessSounds.gameStart();
+    if (Platform.OS === 'web') {
+      initEngine().then(() => { engineReady.current = true; });
+    }
+    return () => { clearTranspositionTable(); };
+  }, []);
 
   useEffect(() => {
     if (mode === 'computer' && !isPlayerTurn && gameStatus === 'playing') {
-      const timer = setTimeout(() => {
-        const aiMove = getBestMove(chess, aiLevel as any);
-        if (aiMove) {
-          const tp = chess.get(aiMove.to as any);
-          chess.move(aiMove);
+      let cancelled = false;
+      const doAI = async () => {
+        setSearchInfo('Thinking...');
+        let moved = false;
+        if (Platform.OS === 'web' && engineReady.current) {
+          try {
+            const result = await searchMove(chess.fen(), aiLevel, movesPlayedRef.current);
+            if (cancelled) return;
+            if (result.san) {
+              const tp = chess.get(result.san as any);
+              chess.move(result.san);
+              moved = true;
+              setSearchInfo(result.isBook ? 'Book move' : `Depth ${result.depth} | ${(result.nodes||0).toLocaleString()} nodes`);
+            } else if (result.from && result.to) {
+              const tp = chess.get(result.to as any);
+              chess.move({ from: result.from as any, to: result.to as any, promotion: result.promotion as any });
+              moved = true;
+              setSearchInfo(result.isBook ? 'Book move' : `Depth ${result.depth} | ${(result.nodes||0).toLocaleString()} nodes`);
+            }
+          } catch {}
+        }
+        if (!moved) {
+          const aiMove = getBestMove(chess, aiLevel as any);
+          if (aiMove && !cancelled) {
+            chess.move(aiMove);
+            moved = true;
+            setSearchInfo('');
+          }
+        }
+        if (moved && !cancelled) {
+          movesPlayedRef.current = chess.history();
           if (chess.isCheckmate()) ChessSounds.checkmate();
           else if (chess.isCheck()) ChessSounds.check();
-          else if (tp) ChessSounds.capture();
           else ChessSounds.move();
           doUpdate();
           setIsPlayerTurn(true);
         }
-      }, 500);
-      return () => clearTimeout(timer);
+      };
+      const timer = setTimeout(doAI, 300);
+      return () => { cancelled = true; clearTimeout(timer); };
     }
   }, [isPlayerTurn, gameStatus, mode]);
 
@@ -327,10 +363,12 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
       const won = mode === 'computer' ? chess.turn() === 'b' : false;
       incrementGames(won);
       setResultMsg(`Checkmate! ${w} wins!`);
+      if (mode === 'computer') reportGameResult(won ? 'loss' : 'win', chess.history());
     } else if (chess.isDraw() || chess.isStalemate()) {
       setGameStatus('draw');
       incrementGames(false);
       setResultMsg('Draw!');
+      if (mode === 'computer') reportGameResult('draw', chess.history());
     }
   }, [chess, mode]);
 
@@ -352,6 +390,7 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
       try {
         const mv = chess.move({ from: selectedSquare as any, to: sq as any, promotion: promo as any });
         if (mv) {
+          movesPlayedRef.current = chess.history();
           if (chess.isCheckmate()) ChessSounds.checkmate();
           else if (chess.isDraw() || chess.isStalemate()) ChessSounds.draw();
           else if (chess.isCheck()) ChessSounds.check();
@@ -368,8 +407,16 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
   }, [chess, selectedSquare, validMoves, gameStatus, mode, isPlayerTurn, doUpdate]);
 
   const handleNewGame = () => {
-    chess.reset(); setFen(chess.fen()); setSelectedSquare(null); setValidMoves([]); setIsPlayerTurn(true); setGameStatus('playing'); setMoveHistory([]); setResultMsg('');
+    chess.reset(); setFen(chess.fen()); setSelectedSquare(null); setValidMoves([]); setIsPlayerTurn(true); setGameStatus('playing'); setMoveHistory([]); setResultMsg(''); setSearchInfo('');
+    movesPlayedRef.current = [];
+    clearTranspositionTable();
     ChessSounds.gameStart();
+  };
+
+  const handleResign = () => {
+    if (mode === 'computer') reportGameResult('loss', chess.history());
+    incrementGames(false);
+    onBack();
   };
 
   const turnText = gameStatus !== 'playing' ? resultMsg : mode === 'computer' ? (isPlayerTurn ? 'Your turn' : 'AI thinking...') : chess.turn() === 'w' ? "White's turn" : "Black's turn";
@@ -379,8 +426,8 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
     <SafeAreaView style={styles.screen}>
       <View style={styles.gameHeader}>
         <TouchableOpacity onPress={onBack} style={{ padding: 8 }}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
-        <View style={{ flex: 1, alignItems: 'center' }}><Text style={styles.cardTitle}>{modeTitle}</Text><Text style={{ color: '#FFD700', fontSize: 13, marginTop: 2 }}>{turnText}</Text></View>
-        <TouchableOpacity onPress={() => { incrementGames(false); onBack(); }} style={{ padding: 8 }}><Ionicons name="flag" size={24} color="#E74C3C" /></TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}><Text style={styles.cardTitle}>{modeTitle}</Text><Text style={{ color: '#FFD700', fontSize: 13, marginTop: 2 }}>{turnText}</Text>{searchInfo ? <Text style={{ color: '#888', fontSize: 11, marginTop: 1 }}>{searchInfo}</Text> : null}</View>
+        <TouchableOpacity onPress={handleResign} style={{ padding: 8 }}><Ionicons name="flag" size={24} color="#E74C3C" /></TouchableOpacity>
       </View>
 
       {chess.isCheck() && gameStatus === 'playing' && (
@@ -409,7 +456,7 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
 
       <View style={{ flexDirection: 'row', padding: 16, gap: 12 }}>
         <TouchableOpacity style={styles.btn} onPress={handleNewGame}><Ionicons name="refresh" size={20} color="#FFF" /><Text style={styles.btnTxt}>New Game</Text></TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, { backgroundColor: 'rgba(231,76,60,0.1)' }]} onPress={() => { incrementGames(false); onBack(); }}><Ionicons name="flag" size={20} color="#E74C3C" /><Text style={[styles.btnTxt, { color: '#E74C3C' }]}>Resign</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: 'rgba(231,76,60,0.1)' }]} onPress={handleResign}><Ionicons name="flag" size={20} color="#E74C3C" /><Text style={[styles.btnTxt, { color: '#E74C3C' }]}>Resign</Text></TouchableOpacity>
       </View>
     </SafeAreaView>
   );
