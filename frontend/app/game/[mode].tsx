@@ -12,18 +12,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Chess } from 'chess.js';
 import ChessBoard from '../../src/components/ChessBoard';
-import { useAuthStore } from '../../src/store/authStore';
-import { gameApi } from '../../src/utils/api';
 import { getBestMove } from '../../src/utils/chessAI';
 import { ChessSounds } from '../../src/utils/chessSounds';
+import { useLocalStore } from '../../src/store/localStore';
 
 export default function GameScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { incrementGames } = useLocalStore();
   
   const mode = params.mode as string;
-  const gameId = params.gameId as string;
   const aiLevel = params.aiLevel as string || 'beginner';
   
   const [chess] = useState(() => new Chess());
@@ -32,16 +30,13 @@ export default function GameScreen() {
   const [validMoves, setValidMoves] = useState<string[]>([]);
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
   const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'draw' | 'stalemate'>('playing');
-  const [isLoading, setIsLoading] = useState(false);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
 
-  // Initialize sounds on mount
   useEffect(() => {
     ChessSounds.init();
     ChessSounds.gameStart();
   }, []);
 
-  // Make AI move when it's computer's turn
   useEffect(() => {
     if (mode === 'computer' && !isPlayerTurn && gameStatus === 'playing') {
       makeAIMove();
@@ -54,28 +49,15 @@ export default function GameScreen() {
       if (aiMove) {
         const targetPiece = chess.get(aiMove.to as any);
         chess.move(aiMove);
-        
-        // Play sound for AI move
-        if (chess.isCheckmate()) {
-          ChessSounds.checkmate();
-        } else if (chess.isCheck()) {
-          ChessSounds.check();
-        } else if (targetPiece) {
-          ChessSounds.capture();
-        } else {
-          ChessSounds.move();
-        }
-        
+        if (chess.isCheckmate()) ChessSounds.checkmate();
+        else if (chess.isCheck()) ChessSounds.check();
+        else if (targetPiece) ChessSounds.capture();
+        else ChessSounds.move();
         updateGameState();
         setIsPlayerTurn(true);
-        
-        // Save move to backend
-        if (gameId) {
-          gameApi.makeMove(gameId, aiMove, chess.fen()).catch(console.error);
-        }
       }
     }, 500);
-  }, [chess, aiLevel, gameId]);
+  }, [chess, aiLevel]);
 
   const updateGameState = useCallback(() => {
     setFen(chess.fen());
@@ -86,123 +68,61 @@ export default function GameScreen() {
     if (chess.isCheckmate()) {
       setGameStatus('checkmate');
       const winner = chess.turn() === 'w' ? 'Black' : 'White';
+      const playerWon = mode === 'computer' ? chess.turn() === 'b' : false;
+      incrementGames(playerWon);
       setTimeout(() => {
         Alert.alert('Checkmate!', `${winner} wins!`, [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'New Game', onPress: handleNewGame },
+          { text: 'Back', onPress: () => router.back() },
         ]);
       }, 500);
-    } else if (chess.isDraw()) {
+    } else if (chess.isDraw() || chess.isStalemate()) {
       setGameStatus('draw');
+      incrementGames(false);
       setTimeout(() => {
         Alert.alert('Draw!', 'The game ended in a draw.', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
-      }, 500);
-    } else if (chess.isStalemate()) {
-      setGameStatus('stalemate');
-      setTimeout(() => {
-        Alert.alert('Stalemate!', 'The game ended in a stalemate.', [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'New Game', onPress: handleNewGame },
+          { text: 'Back', onPress: () => router.back() },
         ]);
       }, 500);
     }
-  }, [chess, router]);
+  }, [chess, router, mode]);
 
   const handleSquarePress = useCallback((square: string) => {
     if (gameStatus !== 'playing') return;
     if (mode === 'computer' && !isPlayerTurn) return;
-    
     const piece = chess.get(square as any);
-    
-    // For local mode, allow both colors to move
     const currentTurn = chess.turn();
     
     if (piece && piece.color === currentTurn) {
-      // Select piece
       ChessSounds.select();
       const moves = chess.moves({ square: square as any, verbose: true });
       setSelectedSquare(square);
       setValidMoves(moves.map(m => m.to));
     } else if (selectedSquare && validMoves.includes(square)) {
-      // Make move
-      const movingPiece = chess.get(selectedSquare as any);
       const targetPiece = chess.get(square as any);
+      const movingPiece = chess.get(selectedSquare as any);
       let promotion: string | undefined;
-      
-      // Auto-promote to queen
-      if (movingPiece?.type === 'p' && (square[1] === '8' || square[1] === '1')) {
-        promotion = 'q';
-      }
-      
+      if (movingPiece?.type === 'p' && (square[1] === '8' || square[1] === '1')) promotion = 'q';
       try {
-        const move = chess.move({
-          from: selectedSquare as any,
-          to: square as any,
-          promotion: promotion as any,
-        });
-        
+        const move = chess.move({ from: selectedSquare as any, to: square as any, promotion: promotion as any });
         if (move) {
-          // Play appropriate sound
-          if (chess.isCheckmate()) {
-            ChessSounds.checkmate();
-          } else if (chess.isDraw() || chess.isStalemate()) {
-            ChessSounds.draw();
-          } else if (chess.isCheck()) {
-            ChessSounds.check();
-          } else if (targetPiece) {
-            ChessSounds.capture();
-          } else {
-            ChessSounds.move();
-          }
-          
+          if (chess.isCheckmate()) ChessSounds.checkmate();
+          else if (chess.isDraw() || chess.isStalemate()) ChessSounds.draw();
+          else if (chess.isCheck()) ChessSounds.check();
+          else if (targetPiece) ChessSounds.capture();
+          else ChessSounds.move();
           updateGameState();
-          
-          if (mode === 'computer') {
-            setIsPlayerTurn(false);
-          }
-          
-          // Save move to backend
-          if (gameId) {
-            gameApi.makeMove(gameId, move.san, chess.fen()).catch(console.error);
-            
-            if (chess.isGameOver()) {
-              const status = chess.isCheckmate() ? 'checkmate' : 'draw';
-              const winner = chess.isCheckmate()
-                ? (chess.turn() === 'w' ? 'black' : user?.user_id)
-                : undefined;
-              gameApi.endGame(gameId, status, winner).catch(console.error);
-            }
-          }
+          if (mode === 'computer') setIsPlayerTurn(false);
         }
       } catch (error) {
         ChessSounds.invalid();
-        console.error('Invalid move:', error);
       }
     } else {
       setSelectedSquare(null);
       setValidMoves([]);
     }
-  }, [chess, selectedSquare, validMoves, gameStatus, mode, isPlayerTurn, gameId, user, updateGameState]);
-
-  const handleResign = () => {
-    Alert.alert(
-      'Resign',
-      'Are you sure you want to resign?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Resign',
-          style: 'destructive',
-          onPress: async () => {
-            if (gameId) {
-              await gameApi.endGame(gameId, 'resigned', mode === 'computer' ? 'computer' : undefined);
-            }
-            router.back();
-          },
-        },
-      ]
-    );
-  };
+  }, [chess, selectedSquare, validMoves, gameStatus, mode, isPlayerTurn, updateGameState]);
 
   const handleNewGame = () => {
     chess.reset();
@@ -215,30 +135,26 @@ export default function GameScreen() {
     ChessSounds.gameStart();
   };
 
+  const handleResign = () => {
+    Alert.alert('Resign', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Resign', style: 'destructive', onPress: () => { incrementGames(false); router.back(); } },
+    ]);
+  };
+
   const getTurnText = () => {
-    if (gameStatus !== 'playing') {
-      return gameStatus.charAt(0).toUpperCase() + gameStatus.slice(1);
-    }
-    
-    if (mode === 'computer') {
-      return isPlayerTurn ? 'Your turn' : 'Computer thinking...';
-    }
-    
+    if (gameStatus !== 'playing') return gameStatus.charAt(0).toUpperCase() + gameStatus.slice(1);
+    if (mode === 'computer') return isPlayerTurn ? 'Your turn' : 'Computer thinking...';
     return chess.turn() === 'w' ? "White's turn" : "Black's turn";
   };
 
   const getModeTitle = () => {
-    switch (mode) {
-      case 'computer': return `vs Computer (${aiLevel})`;
-      case 'local': return 'Local Game';
-      case 'online': return 'Online Game';
-      default: return 'Chess';
-    }
+    if (mode === 'computer') return `vs Computer (${aiLevel})`;
+    return 'Local Game';
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -252,7 +168,6 @@ export default function GameScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Chess Board */}
       <View style={styles.boardContainer}>
         {chess.isCheck() && (
           <View style={styles.checkBanner}>
@@ -260,36 +175,23 @@ export default function GameScreen() {
             <Text style={styles.checkText}>Check!</Text>
           </View>
         )}
-        
-        <ChessBoard
-          chess={chess}
-          selectedSquare={selectedSquare}
-          validMoves={validMoves}
-          onSquarePress={handleSquarePress}
-          disabled={gameStatus !== 'playing' || (mode === 'computer' && !isPlayerTurn)}
-        />
-        
+        <ChessBoard chess={chess} selectedSquare={selectedSquare} validMoves={validMoves} onSquarePress={handleSquarePress} disabled={gameStatus !== 'playing' || (mode === 'computer' && !isPlayerTurn)} />
         {mode === 'computer' && !isPlayerTurn && gameStatus === 'playing' && (
-          <View style={styles.thinkingOverlay}>
-            <ActivityIndicator size="small" color="#FFD700" />
-          </View>
+          <View style={styles.thinkingOverlay}><ActivityIndicator size="small" color="#FFD700" /></View>
         )}
       </View>
 
-      {/* Move History */}
       <View style={styles.historyContainer}>
         <Text style={styles.historyTitle}>Moves</Text>
         <View style={styles.movesList}>
           {moveHistory.map((move, index) => (
             <Text key={index} style={styles.moveItem}>
-              {index % 2 === 0 ? `${Math.floor(index / 2) + 1}. ` : ''}{move}
-              {index % 2 === 1 ? ' ' : ''}
+              {index % 2 === 0 ? `${Math.floor(index / 2) + 1}. ` : ''}{move}{index % 2 === 1 ? ' ' : ''}
             </Text>
           ))}
         </View>
       </View>
 
-      {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity style={styles.controlButton} onPress={handleNewGame}>
           <Ionicons name="refresh" size={20} color="#FFFFFF" />
@@ -305,102 +207,23 @@ export default function GameScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  turnText: {
-    fontSize: 14,
-    color: '#FFD700',
-    marginTop: 2,
-  },
-  menuButton: {
-    padding: 8,
-  },
-  boardContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  checkBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(231, 76, 60, 0.2)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  checkText: {
-    color: '#E74C3C',
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  thinkingOverlay: {
-    position: 'absolute',
-    top: 10,
-    right: 26,
-  },
-  historyContainer: {
-    flex: 1,
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: '#16213e',
-    borderRadius: 12,
-    padding: 12,
-  },
-  historyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888888',
-    marginBottom: 8,
-  },
-  movesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  moveItem: {
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
-  controls: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  controlButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#16213e',
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  resignButton: {
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-  },
-  controlText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginLeft: 8,
-  },
+  container: { flex: 1, backgroundColor: '#1a1a2e' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+  backButton: { padding: 8 },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
+  turnText: { fontSize: 14, color: '#FFD700', marginTop: 2 },
+  menuButton: { padding: 8 },
+  boardContainer: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  checkBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(231, 76, 60, 0.2)', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, marginBottom: 8 },
+  checkText: { color: '#E74C3C', fontWeight: 'bold', marginLeft: 8 },
+  thinkingOverlay: { position: 'absolute', top: 10, right: 26 },
+  historyContainer: { flex: 1, marginHorizontal: 16, marginTop: 16, backgroundColor: '#16213e', borderRadius: 12, padding: 12 },
+  historyTitle: { fontSize: 14, fontWeight: '600', color: '#888888', marginBottom: 8 },
+  movesList: { flexDirection: 'row', flexWrap: 'wrap' },
+  moveItem: { fontSize: 14, color: '#FFFFFF' },
+  controls: { flexDirection: 'row', padding: 16, gap: 12 },
+  controlButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#16213e', paddingVertical: 14, borderRadius: 12 },
+  resignButton: { backgroundColor: 'rgba(231, 76, 60, 0.1)' },
+  controlText: { fontSize: 16, color: '#FFFFFF', marginLeft: 8 },
 });

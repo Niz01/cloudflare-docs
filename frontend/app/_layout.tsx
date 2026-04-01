@@ -15,8 +15,6 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="(auth)/callback" />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="game/[mode]" options={{ presentation: 'card' }} />
         <Stack.Screen name="puzzle/[difficulty]" options={{ presentation: 'card' }} />
