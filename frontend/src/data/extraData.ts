@@ -99,6 +99,21 @@ export const EXTRA_PUZZLES = [
   {puzzle_id:"p297",fen:"rnbqkb1r/pp3ppp/4pn2/2ppP3/3P4/2P5/PP3PPP/RNBQKBNR b KQkq - 0 4",solution:["Nc6","Nf3","Qb6"],difficulty:"hard",rating:1550,theme:"alapin"},
   {puzzle_id:"p298",fen:"r1bqk2r/ppp1bppp/2n1pn2/3p4/2PP4/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 3 5",solution:["O-O","Bg2","dxc4"],difficulty:"medium",rating:1150,theme:"catalan_closed"},
   {puzzle_id:"p299",fen:"rnbqk2r/ppppbppp/5n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",solution:["d4","d6","dxe5"],difficulty:"medium",rating:1100,theme:"italian"},
+  {puzzle_id:"p300",fen:"6k1/5ppp/8/8/8/2q5/5PPP/3R2K1 w - - 0 1",solution:["Rd8+","Qf8","Rxf8#"],difficulty:"impossible",rating:1800,theme:"back_rank_sacrifice"},
+  {puzzle_id:"p301",fen:"r1b2rk1/pp3ppp/2p5/4N3/2B5/8/PPP2PPP/R3R1K1 w - - 0 1",solution:["Nxf7","Rxf7","Re8+"],difficulty:"impossible",rating:1850,theme:"deflection"},
+  {puzzle_id:"p302",fen:"2kr3r/ppp2ppp/2n5/3q4/3P4/2P1B3/PP2QPPP/R4RK1 w - - 0 1",solution:["Bf4+","Kb8","Rab1"],difficulty:"impossible",rating:1900,theme:"discovered_attack"},
+  {puzzle_id:"p303",fen:"r4rk1/ppp2ppp/2n5/2bqp3/8/P1NP4/1PP1BPPP/R2Q1RK1 w - - 0 1",solution:["Nd5","Qxd5","Bg4"],difficulty:"impossible",rating:1950,theme:"knight_sacrifice"},
+  {puzzle_id:"p304",fen:"r2qk2r/ppp1bppp/2n1p3/3pP3/3Pn3/3B1N2/PPP2PPP/R1BQR1K1 w kq - 0 1",solution:["Bxh7+","Kxh7","Ng5+"],difficulty:"impossible",rating:2000,theme:"greek_gift"},
+  {puzzle_id:"p305",fen:"r1bq1rk1/pp2bppp/2n1p3/3pP3/3N4/3B4/PPP2PPP/R1BQR1K1 w - - 0 1",solution:["Bxh7+","Kxh7","Qh5+"],difficulty:"impossible",rating:2050,theme:"bishop_sacrifice"},
+  {puzzle_id:"p306",fen:"r4rk1/1bq2ppp/p2ppn2/1p6/3NP3/1BN5/PPP1QPPP/R4RK1 w - - 0 1",solution:["Nd5","exd5","exd5"],difficulty:"impossible",rating:1900,theme:"central_breakthrough"},
+  {puzzle_id:"p307",fen:"2r3k1/pp3ppp/4p3/2bpP3/5P2/2P5/PP4PP/R1B2RK1 w - - 0 1",solution:["f5","exf5","Bh6"],difficulty:"impossible",rating:1850,theme:"pawn_storm"},
+  {puzzle_id:"p308",fen:"r2q1rk1/ppp2ppp/3bpn2/3p4/2PP4/1P3NP1/P3PPBP/R1BQ1RK1 w - - 0 1",solution:["c5","Be7","Bf4"],difficulty:"impossible",rating:1800,theme:"space_advantage"},
+  {puzzle_id:"p309",fen:"r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/P1PB1N2/2P2PPP/R1BQK2R w KQ - 0 1",solution:["Bxh7+","Kxh7","Ng5+"],difficulty:"impossible",rating:2100,theme:"classic_greek_gift"},
+  {puzzle_id:"p310",fen:"r2qkb1r/1b1n1ppp/p3pn2/1ppP4/8/2N2NP1/PP2PPBP/R1BQ1RK1 w kq - 0 1",solution:["d6","Bxd6","Nd5"],difficulty:"impossible",rating:1950,theme:"pawn_breakthrough"},
+  {puzzle_id:"p311",fen:"r1b1r1k1/1pq2ppp/p1nppn2/8/2PNP3/2N1B3/PP2BPPP/R2Q1RK1 w - - 0 1",solution:["Nd5","exd5","exd5"],difficulty:"impossible",rating:1900,theme:"positional_sacrifice"},
+  {puzzle_id:"p312",fen:"r2q1rk1/pp1bbppp/2n1pn2/2pp4/4P3/2PP1NP1/PP1N1PBP/R1BQR1K1 w - - 0 1",solution:["e5","Nd7","d4"],difficulty:"impossible",rating:1850,theme:"central_space"},
+  {puzzle_id:"p313",fen:"r1bq1rk1/ppp1nppp/3p4/3Pp3/2P1N3/5N2/PP2BPPP/R1BQ1RK1 w - - 0 1",solution:["Nfg5","h6","Qh5"],difficulty:"impossible",rating:2000,theme:"kingside_attack"},
+  {puzzle_id:"p314",fen:"r3kb1r/ppqn1ppp/4pn2/2ppP3/3P1B2/2PB1N2/PP3PPP/R2Q1RK1 w kq - 0 1",solution:["Bxh7","Nxh7","Ng5"],difficulty:"impossible",rating:2100,theme:"deep_sacrifice"},
 ];
 
 export const EXTRA_OPENINGS = [

@@ -98,6 +98,10 @@ var KING_END = [
   -50,-30,-30,-30,-30,-30,-30,-50, 0,0,0,0,0,0,0,0
 ];
 
+// ============ ENGINE TUNING ============
+var contempt = 0;
+var NULL_MOVE_R = 3;
+
 // ============ ZOBRIST HASHING ============
 var zobristTable = [];
 var zobristSide;
@@ -497,6 +501,7 @@ var rlWeights = null;
 function evaluate(state) {
   var score = 0;
   var wMat = 0, bMat = 0;
+  var wBishops = 0, bBishops = 0;
   for (var sq = 0; sq < 128; sq++) {
     if (sq & 0x88) continue;
     if (state.board[sq] === EMPTY) continue;
@@ -511,7 +516,10 @@ function evaluate(state) {
     }
     if (c === WHITE) score += val + pstVal;
     else score -= val + pstVal;
+    if (p === BISHOP) { if (c === WHITE) wBishops++; else bBishops++; }
   }
+  if (wBishops >= 2) score += 35;
+  if (bBishops >= 2) score -= 35;
   var isEndgame = (wMat + bMat) < 3200;
   if (isEndgame) {
     var wkSq = state.side === WHITE ? state.kings[WHITE] : mirror88(state.kings[WHITE]);
@@ -539,19 +547,29 @@ function quiescence(state, alpha, beta, depth) {
   return alpha;
 }
 
-// ============ ALPHA-BETA SEARCH ============
+// ============ ALPHA-BETA SEARCH (LETHAL) ============
 var nodesSearched = 0;
 
-function alphaBeta(state, depth, alpha, beta, ply) {
+function alphaBeta(state, depth, alpha, beta, ply, doNull) {
   nodesSearched++;
-  if (state.halfmove >= 100) return 0;
+  if (state.halfmove >= 100) return -contempt;
+  var inCheckNow = inCheck(state, state.side);
+  if (inCheckNow && depth < 64) depth++;
   var ttScore = ttProbe(state, depth, alpha, beta);
   if (ttScore !== null && ply > 0) return ttScore;
   if (depth <= 0) return quiescence(state, alpha, beta, 0);
   var moves = getLegalMoves(state, false);
   if (moves.length === 0) {
-    if (inCheck(state, state.side)) return -INF + ply;
-    return 0;
+    if (inCheckNow) return -INF + ply;
+    return -contempt;
+  }
+  if (doNull && !inCheckNow && depth >= NULL_MOVE_R + 1 && ply > 0 && state.material[state.side] > 4000) {
+    var ns = state.clone();
+    ns.side = 1 - ns.side;
+    ns.hash[0] ^= zobristSide[0]; ns.hash[1] ^= zobristSide[1];
+    if (ns.ep !== -1) { ns.hash[0] ^= zobristEP[ns.ep][0]; ns.hash[1] ^= zobristEP[ns.ep][1]; ns.ep = -1; }
+    var nullScore = -alphaBeta(ns, depth - 1 - NULL_MOVE_R, -beta, -beta + 1, ply + 1, false);
+    if (nullScore >= beta) return beta;
   }
   var hashMove = ttBestMove(state);
   moves = orderMoves(moves, state, ply, hashMove);
@@ -561,22 +579,24 @@ function alphaBeta(state, depth, alpha, beta, ply) {
   for (var i = 0; i < moves.length; i++) {
     var ns = makeMove(state, moves[i]);
     var score;
+    var newDepth = depth - 1;
     if (i === 0) {
-      score = -alphaBeta(ns, depth - 1, -beta, -alpha, ply + 1);
+      score = -alphaBeta(ns, newDepth, -beta, -alpha, ply + 1, true);
     } else {
-      score = -alphaBeta(ns, depth - 1, -alpha - 1, -alpha, ply + 1);
-      if (score > alpha && score < beta) {
-        score = -alphaBeta(ns, depth - 1, -beta, -alpha, ply + 1);
+      var doLMR = (i >= 3 && depth >= 3 && !inCheckNow && !moves[i].captured && !(moves[i].flags & FLAG_PROMO));
+      if (doLMR) {
+        var R = 1 + Math.floor(Math.log(depth) * Math.log(i + 1) / 2.5);
+        R = Math.min(R, newDepth - 1);
+        if (R < 1) R = 1;
+        score = -alphaBeta(ns, newDepth - R, -alpha - 1, -alpha, ply + 1, true);
+        if (score > alpha) score = -alphaBeta(ns, newDepth, -beta, -alpha, ply + 1, true);
+      } else {
+        score = -alphaBeta(ns, newDepth, -alpha - 1, -alpha, ply + 1, true);
+        if (score > alpha && score < beta) score = -alphaBeta(ns, newDepth, -beta, -alpha, ply + 1, true);
       }
     }
-    if (score > bestScore) {
-      bestScore = score;
-      bestMove = moves[i];
-    }
-    if (score > alpha) {
-      alpha = score;
-      flag = TT_EXACT;
-    }
+    if (score > bestScore) { bestScore = score; bestMove = moves[i]; }
+    if (score > alpha) { alpha = score; flag = TT_EXACT; }
     if (alpha >= beta) {
       flag = TT_BETA;
       if (!moves[i].captured) {
@@ -592,21 +612,33 @@ function alphaBeta(state, depth, alpha, beta, ply) {
   return bestScore;
 }
 
-// ============ ITERATIVE DEEPENING ============
+// ============ ITERATIVE DEEPENING (ASPIRATION) ============
 function searchBestMove(state, maxDepth, timeLimit) {
   nodesSearched = 0;
   var startTime = Date.now();
   var bestMove = null;
   var bestScore = -INF;
+  var prevScore = 0;
   for (var d = 1; d <= maxDepth; d++) {
     killerMoves.forEach(function(k) { k[0] = null; k[1] = null; });
-    var score = alphaBeta(state, d, -INF, INF, 0);
+    var score;
+    if (d >= 5) {
+      var w = 50;
+      score = alphaBeta(state, d, prevScore - w, prevScore + w, 0, true);
+      if (score <= prevScore - w || score >= prevScore + w) {
+        score = alphaBeta(state, d, -INF, INF, 0, true);
+      }
+    } else {
+      score = alphaBeta(state, d, -INF, INF, 0, true);
+    }
     var entry = tt[ttKey(state)];
     if (entry && entry.bestMove) {
       bestMove = entry.bestMove;
       bestScore = score;
     }
+    prevScore = score;
     if (Date.now() - startTime > timeLimit) break;
+    if (Math.abs(score) > INF - 100) break;
   }
   return { move: bestMove, score: bestScore, nodes: nodesSearched, depth: d - 1 };
 }
@@ -671,9 +703,11 @@ self.onmessage = function(e) {
   if (msg.type === 'init') {
     if (msg.openingBook) initOpeningBook(msg.openingBook);
     if (msg.rlWeights) loadRLWeights(msg.rlWeights);
+    if (msg.contempt !== undefined) contempt = msg.contempt;
     self.postMessage({ type: 'ready' });
   }
   else if (msg.type === 'search') {
+    if (msg.contempt !== undefined) contempt = msg.contempt;
     var state = parseFEN(msg.fen);
     var bookMove = null;
     if (msg.movesPlayed && msg.movesPlayed.length < 20 && msg.useBook) {
@@ -743,14 +777,16 @@ interface DifficultyConfig {
   timeLimit: number;
   randomness: number;
   useBook: boolean;
+  contempt: number;
 }
 
 const DIFFICULTY_CONFIGS: Record<string, DifficultyConfig> = {
-  beginner:     { maxDepth: 2,  timeLimit: 500,   randomness: 0.6,  useBook: false },
-  intermediate: { maxDepth: 4,  timeLimit: 1500,  randomness: 0.15, useBook: true },
-  advanced:     { maxDepth: 8,  timeLimit: 3000,  randomness: 0.03, useBook: true },
-  master:       { maxDepth: 14, timeLimit: 8000,  randomness: 0,    useBook: true },
-  beyondmaster: { maxDepth: 20, timeLimit: 15000, randomness: 0,    useBook: true },
+  beginner:     { maxDepth: 2,  timeLimit: 500,   randomness: 0.6,  useBook: false, contempt: 0 },
+  intermediate: { maxDepth: 4,  timeLimit: 1500,  randomness: 0.15, useBook: true,  contempt: 0 },
+  advanced:     { maxDepth: 8,  timeLimit: 3000,  randomness: 0.03, useBook: true,  contempt: 10 },
+  master:       { maxDepth: 14, timeLimit: 8000,  randomness: 0,    useBook: true,  contempt: 25 },
+  beyondmaster: { maxDepth: 20, timeLimit: 15000, randomness: 0,    useBook: true,  contempt: 40 },
+  lethal:       { maxDepth: 50, timeLimit: 30000, randomness: 0,    useBook: true,  contempt: 50 },
 };
 
 let worker: Worker | null = null;
@@ -827,6 +863,7 @@ export function searchMove(
       timeLimit: config.timeLimit,
       randomness: config.randomness,
       useBook: config.useBook,
+      contempt: config.contempt,
     });
 
     // Safety timeout

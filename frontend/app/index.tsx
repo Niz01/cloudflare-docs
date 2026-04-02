@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal,
-  ActivityIndicator, Alert, Dimensions, Platform,
+  ActivityIndicator, Alert, Dimensions, Platform, TextInput,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,11 +12,74 @@ import { getBestMove } from '../src/utils/chessAI';
 import { ChessSounds } from '../src/utils/chessSounds';
 import { PUZZLES } from '../src/data/puzzleData';
 import { OPENINGS } from '../src/data/openingData';
+import { EXTRA_PUZZLES, EXTRA_OPENINGS, CHAMPION_GAMES } from '../src/data/extraData';
 import { useLocalStore } from '../src/store/localStore';
 
+// ===== MERGED DATA =====
+const ALL_PUZZLES = [...PUZZLES, ...EXTRA_PUZZLES];
+const ALL_OPENINGS = [...OPENINGS, ...EXTRA_OPENINGS];
+
 // ===== TYPES =====
-type Screen = 'play' | 'puzzles' | 'learn' | 'profile' | 'game' | 'puzzle';
+type Screen = 'play' | 'puzzles' | 'learn' | 'profile' | 'game' | 'puzzle' | 'openings' | 'legend' | 'legendGame' | 'roadmap';
 type GameMode = 'computer' | 'local';
+
+// ===== CONSTANTS =====
+const AI_LEVELS = [
+  { key: 'beginner', name: 'Beginner', desc: 'Casual play', icon: 'leaf', color: '#2ECC71' },
+  { key: 'intermediate', name: 'Intermediate', desc: 'Basic strategy', icon: 'fitness', color: '#3498DB' },
+  { key: 'advanced', name: 'Advanced', desc: 'Tactical play (Depth 8)', icon: 'flash', color: '#F39C12' },
+  { key: 'master', name: 'Master', desc: 'Strong positional (Depth 14)', icon: 'trophy', color: '#E67E22' },
+  { key: 'beyondmaster', name: 'Beyond Master', desc: 'Super GM (Depth 20)', icon: 'diamond', color: '#9B59B6' },
+  { key: 'lethal', name: 'LETHAL', desc: 'Beyond GM - Depth 30+ (30s)', icon: 'skull', color: '#E74C3C' },
+];
+
+const DIFFS = [
+  { key: 'easy', name: 'Easy', color: '#2ECC71', icon: 'leaf', rating: '500-700' },
+  { key: 'medium', name: 'Medium', color: '#F39C12', icon: 'fitness', rating: '900-1200' },
+  { key: 'hard', name: 'Hard', color: '#E74C3C', icon: 'flame', rating: '1300-1700' },
+  { key: 'impossible', name: 'Impossible', color: '#9B59B6', icon: 'skull', rating: '1800+' },
+];
+
+const CATS = [
+  { key: 'all', name: 'All' }, { key: 'open_game', name: 'Open' }, { key: 'semi_open', name: 'Semi-Open' },
+  { key: 'closed_game', name: 'Closed' }, { key: 'indian_defense', name: 'Indian' },
+  { key: 'flank', name: 'Flank' }, { key: 'gambit', name: 'Gambits' },
+];
+const DC: Record<string, string> = { beginner: '#2ECC71', intermediate: '#F39C12', advanced: '#E74C3C' };
+
+const ROADMAP_DATA = {
+  short: [
+    { month: 1, title: 'Foundation', target: 1000, color: '#2ECC71',
+      goals: ['Master piece values & basic checkmates', 'Learn forks, pins, and skewers', 'Play 20+ games vs Beginner AI', 'Solve 50 easy puzzles'],
+      focus: 'Tactics & Rules' },
+    { month: 2, title: 'Pattern Recognition', target: 1200, color: '#F39C12',
+      goals: ['Study 5 main opening systems', 'Learn Lucena & Philidor endgames', 'Daily medium puzzle training', 'Play vs Advanced AI regularly'],
+      focus: 'Openings & Endgames' },
+    { month: 3, title: 'Strategic Thinking', target: 1400, color: '#E74C3C',
+      goals: ['Understand pawn structures', 'Master piece coordination', 'Analyze your own games', 'Challenge the Master AI'],
+      focus: 'Strategy & Analysis' },
+  ],
+  extended: [
+    { month: 4, title: 'Deep Calculation', target: 1500, color: '#9B59B6',
+      goals: ['Combination patterns', 'Calculate 5+ moves ahead', 'Sacrifice themes mastery', 'Zwischenzug & Desperado'],
+      focus: 'Calculation Depth' },
+    { month: 5, title: 'Repertoire Building', target: 1600, color: '#00D9FF',
+      goals: ['Complete White repertoire', 'Complete Black repertoire', 'Study model GM games', 'Understand middlegame plans'],
+      focus: 'Opening Mastery' },
+    { month: 6, title: 'Endgame Technique', target: 1700, color: '#2ECC71',
+      goals: ['Rook endgame mastery', 'Bishop vs Knight endings', 'Queen endgame technique', 'Practical conversion skills'],
+      focus: 'Endgame Precision' },
+    { month: 7, title: 'Positional Mastery', target: 1800, color: '#F39C12',
+      goals: ['Prophylaxis concepts', 'Weak square exploitation', 'Piece activity optimization', 'Long-term strategic planning'],
+      focus: 'Positional Play' },
+    { month: 8, title: 'Advanced Preparation', target: 1900, color: '#E74C3C',
+      goals: ['Opening novelties', 'Deep middlegame planning', 'Time management mastery', 'Competitive psychology'],
+      focus: 'Tournament Readiness' },
+    { month: 9, title: 'Chess Mastery', target: 2000, color: '#FFD700',
+      goals: ['Beat Lethal AI consistently', 'Solve impossible puzzles', 'Master all champion positions', 'Achieve full chess mastery'],
+      focus: 'Peak Performance' },
+  ],
+};
 
 // ===== MAIN APP =====
 export default function App() {
@@ -24,6 +87,7 @@ export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>('local');
   const [aiLevel, setAiLevel] = useState('beginner');
   const [puzzleDifficulty, setPuzzleDifficulty] = useState('easy');
+  const [selectedGame, setSelectedGame] = useState<any>(null);
   const { loadStats } = useLocalStore();
 
   useEffect(() => { loadStats(); }, []);
@@ -39,19 +103,20 @@ export default function App() {
     setScreen('puzzle');
   };
 
-  const goBack = () => setScreen('play');
-
   return (
     <SafeAreaProvider>
       <View style={styles.appContainer}>
         {screen === 'play' && <PlayScreen onStartGame={goToGame} />}
         {screen === 'puzzles' && <PuzzlesScreen onSelectDifficulty={goToPuzzle} />}
-        {screen === 'learn' && <LearnScreen />}
+        {screen === 'learn' && <LearnScreen onNavigate={(s: any) => setScreen(s)} />}
         {screen === 'profile' && <ProfileScreen />}
-        {screen === 'game' && <GameScreen mode={gameMode} aiLevel={aiLevel} onBack={goBack} />}
+        {screen === 'game' && <GameScreen mode={gameMode} aiLevel={aiLevel} onBack={() => setScreen('play')} />}
         {screen === 'puzzle' && <PuzzleScreen difficulty={puzzleDifficulty} onBack={() => setScreen('puzzles')} />}
+        {screen === 'openings' && <OpeningsScreen onBack={() => setScreen('learn')} />}
+        {screen === 'legend' && <LegendScreen onSelectGame={(g: any) => { setSelectedGame(g); setScreen('legendGame'); }} onBack={() => setScreen('learn')} />}
+        {screen === 'legendGame' && selectedGame && <LegendGameScreen game={selectedGame} onBack={() => setScreen('legend')} />}
+        {screen === 'roadmap' && <RoadmapScreen onBack={() => setScreen('learn')} />}
 
-        {/* Tab Bar - only show on main screens */}
         {['play', 'puzzles', 'learn', 'profile'].includes(screen) && (
           <View style={styles.tabBar}>
             <TabButton icon="game-controller" label="Play" active={screen === 'play'} onPress={() => setScreen('play')} />
@@ -75,16 +140,18 @@ function TabButton({ icon, label, active, onPress }: { icon: string; label: stri
   );
 }
 
-// ===== PLAY SCREEN =====
-const AI_LEVELS = [
-  { key: 'beginner', name: 'Beginner', desc: 'Makes random moves', icon: 'leaf' },
-  { key: 'intermediate', name: 'Intermediate', desc: 'Basic strategy', icon: 'fitness' },
-  { key: 'advanced', name: 'Advanced', desc: 'Smart play', icon: 'flash' },
-  { key: 'master', name: 'Master', desc: 'Strongest AI', icon: 'trophy' },
-];
+function StatBox({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.statBox}>
+      <Text style={styles.statVal}>{value}</Text>
+      <Text style={styles.statLbl}>{label}</Text>
+    </View>
+  );
+}
 
+// ===== PLAY SCREEN =====
 function PlayScreen({ onStartGame }: { onStartGame: (mode: GameMode, level?: string) => void }) {
-  const { stats } = useLocalStore();
+  const { stats, isGodMode } = useLocalStore();
   const [showAIModal, setShowAIModal] = useState(false);
 
   return (
@@ -92,14 +159,21 @@ function PlayScreen({ onStartGame }: { onStartGame: (mode: GameMode, level?: str
       <ScrollView contentContainerStyle={styles.pad20}>
         <View style={styles.headerRow}>
           <Text style={styles.h1}>Chess Master</Text>
-          <View style={styles.badge}><Ionicons name="star" size={14} color="#FFD700" /><Text style={styles.badgeText}>ALL ACCESS</Text></View>
+          {isGodMode ? (
+            <View style={[styles.badge, { backgroundColor: 'rgba(255,107,53,0.15)', borderWidth: 1, borderColor: 'rgba(255,107,53,0.4)' }]}>
+              <Ionicons name="shield-checkmark" size={14} color="#FF6B35" />
+              <Text style={[styles.badgeText, { color: '#FF6B35' }]}>GOD MODE</Text>
+            </View>
+          ) : (
+            <View style={styles.badge}><Ionicons name="star" size={14} color="#FFD700" /><Text style={styles.badgeText}>ALL ACCESS</Text></View>
+          )}
         </View>
 
         <Text style={styles.h2}>Choose Game Mode</Text>
 
         <TouchableOpacity style={styles.card} onPress={() => setShowAIModal(true)}>
           <View style={[styles.cardIcon, { backgroundColor: 'rgba(0,217,255,0.1)' }]}><Ionicons name="hardware-chip" size={30} color="#00D9FF" /></View>
-          <View style={styles.cardBody}><Text style={styles.cardTitle}>Play vs Computer</Text><Text style={styles.cardSub}>Challenge AI at various levels</Text></View>
+          <View style={styles.cardBody}><Text style={styles.cardTitle}>Play vs Computer</Text><Text style={styles.cardSub}>Challenge AI at 6 difficulty levels</Text></View>
           <Ionicons name="chevron-forward" size={22} color="#555" />
         </TouchableOpacity>
 
@@ -124,8 +198,9 @@ function PlayScreen({ onStartGame }: { onStartGame: (mode: GameMode, level?: str
             <Text style={styles.modalTitle}>Select AI Difficulty</Text>
             {AI_LEVELS.map((l) => (
               <TouchableOpacity key={l.key} style={styles.aiOpt} onPress={() => { setShowAIModal(false); onStartGame('computer', l.key); }}>
-                <View style={styles.aiOptIcon}><Ionicons name={l.icon as any} size={22} color="#FFD700" /></View>
+                <View style={[styles.aiOptIcon, { backgroundColor: `${l.color}20` }]}><Ionicons name={l.icon as any} size={22} color={l.color} /></View>
                 <View style={{ flex: 1 }}><Text style={styles.aiOptName}>{l.name}</Text><Text style={styles.aiOptDesc}>{l.desc}</Text></View>
+                {l.key === 'lethal' && <View style={{ backgroundColor: 'rgba(231,76,60,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}><Text style={{ color: '#E74C3C', fontSize: 9, fontWeight: 'bold' }}>MAX</Text></View>}
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.modalClose} onPress={() => setShowAIModal(false)}><Text style={{ color: '#888', fontSize: 16 }}>Cancel</Text></TouchableOpacity>
@@ -136,30 +211,14 @@ function PlayScreen({ onStartGame }: { onStartGame: (mode: GameMode, level?: str
   );
 }
 
-function StatBox({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.statBox}>
-      <Text style={styles.statVal}>{value}</Text>
-      <Text style={styles.statLbl}>{label}</Text>
-    </View>
-  );
-}
-
 // ===== PUZZLES SCREEN =====
-const DIFFS = [
-  { key: 'easy', name: 'Easy', color: '#2ECC71', icon: 'leaf', rating: '500-700' },
-  { key: 'medium', name: 'Medium', color: '#F39C12', icon: 'fitness', rating: '900-1200' },
-  { key: 'hard', name: 'Hard', color: '#E74C3C', icon: 'flame', rating: '1300-1700' },
-  { key: 'impossible', name: 'Impossible', color: '#9B59B6', icon: 'skull', rating: '1800+' },
-];
-
 function PuzzlesScreen({ onSelectDifficulty }: { onSelectDifficulty: (d: string) => void }) {
   const { stats } = useLocalStore();
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.pad20}>
         <Text style={styles.h1}>Chess Puzzles</Text>
-        <Text style={styles.sub}>Train your tactical skills</Text>
+        <Text style={styles.sub}>{ALL_PUZZLES.length} puzzles across all difficulties</Text>
 
         <View style={styles.statsCard}>
           <View style={{ alignItems: 'center', flex: 1 }}><Text style={styles.statVal}>{stats.puzzleRating}</Text><Text style={styles.statLbl}>Rating</Text></View>
@@ -168,45 +227,81 @@ function PuzzlesScreen({ onSelectDifficulty }: { onSelectDifficulty: (d: string)
         </View>
 
         <Text style={styles.h2}>Select Difficulty</Text>
-        {DIFFS.map((d) => (
-          <TouchableOpacity key={d.key} style={styles.card} onPress={() => onSelectDifficulty(d.key)}>
-            <View style={[styles.cardIcon, { backgroundColor: `${d.color}20` }]}><Ionicons name={d.icon as any} size={28} color={d.color} /></View>
-            <View style={styles.cardBody}><Text style={styles.cardTitle}>{d.name}</Text><Text style={styles.cardSub}>Rating: {d.rating}</Text></View>
-            <Ionicons name="chevron-forward" size={22} color="#555" />
-          </TouchableOpacity>
-        ))}
+        {DIFFS.map((d) => {
+          const count = ALL_PUZZLES.filter((p: any) => p.difficulty === d.key).length;
+          return (
+            <TouchableOpacity key={d.key} style={styles.card} onPress={() => onSelectDifficulty(d.key)}>
+              <View style={[styles.cardIcon, { backgroundColor: `${d.color}20` }]}><Ionicons name={d.icon as any} size={28} color={d.color} /></View>
+              <View style={styles.cardBody}><Text style={styles.cardTitle}>{d.name}</Text><Text style={styles.cardSub}>{count} puzzles | Rating: {d.rating}</Text></View>
+              <Ionicons name="chevron-forward" size={22} color="#555" />
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ===== LEARN SCREEN =====
-const CATS = [
-  { key: 'all', name: 'All' }, { key: 'open_game', name: 'Open' }, { key: 'semi_open', name: 'Semi-Open' },
-  { key: 'closed_game', name: 'Closed' }, { key: 'indian_defense', name: 'Indian' },
-  { key: 'flank', name: 'Flank' }, { key: 'gambit', name: 'Gambits' },
-];
-const DC: Record<string, string> = { beginner: '#2ECC71', intermediate: '#F39C12', advanced: '#E74C3C' };
-
-function LearnScreen() {
-  const [cat, setCat] = useState('all');
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const filtered = useMemo(() => cat === 'all' ? OPENINGS : OPENINGS.filter((o: any) => o.category === cat), [cat]);
-
+// ===== LEARN SCREEN (HUB) =====
+function LearnScreen({ onNavigate }: { onNavigate: (s: string) => void }) {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.pad20}>
-        <Text style={styles.h1}>Opening Explorer</Text>
-        <Text style={styles.sub}>{filtered.length} openings</Text>
+        <Text style={styles.h1}>Learn Chess</Text>
+        <Text style={styles.sub}>Master the game with structured training</Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16, marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
-          {CATS.map((c) => (
-            <TouchableOpacity key={c.key} style={[styles.chip, cat === c.key && styles.chipActive]} onPress={() => setCat(c.key)}>
-              <Text style={[styles.chipText, cat === c.key && styles.chipTextActive]}>{c.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <TouchableOpacity style={styles.card} onPress={() => onNavigate('openings')}>
+          <View style={[styles.cardIcon, { backgroundColor: 'rgba(255,215,0,0.1)' }]}><Ionicons name="book" size={30} color="#FFD700" /></View>
+          <View style={styles.cardBody}><Text style={styles.cardTitle}>Opening Explorer</Text><Text style={styles.cardSub}>{ALL_OPENINGS.length} openings with key ideas</Text></View>
+          <Ionicons name="chevron-forward" size={22} color="#555" />
+        </TouchableOpacity>
 
+        <TouchableOpacity style={styles.card} onPress={() => onNavigate('legend')}>
+          <View style={[styles.cardIcon, { backgroundColor: 'rgba(255,107,53,0.1)' }]}><Ionicons name="trophy" size={30} color="#FF6B35" /></View>
+          <View style={styles.cardBody}><Text style={styles.cardTitle}>Win Like a Legend</Text><Text style={styles.cardSub}>{CHAMPION_GAMES.length} champion positions to solve</Text></View>
+          <Ionicons name="chevron-forward" size={22} color="#555" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card} onPress={() => onNavigate('roadmap')}>
+          <View style={[styles.cardIcon, { backgroundColor: 'rgba(0,217,255,0.1)' }]}><Ionicons name="map" size={30} color="#00D9FF" /></View>
+          <View style={styles.cardBody}><Text style={styles.cardTitle}>Smart Roadmap</Text><Text style={styles.cardSub}>3-month & 9-month improvement plans</Text></View>
+          <Ionicons name="chevron-forward" size={22} color="#555" />
+        </TouchableOpacity>
+
+        <Text style={[styles.h2, { marginTop: 24 }]}>Content Library</Text>
+        <View style={styles.statsRow}>
+          <StatBox label="Openings" value={ALL_OPENINGS.length} />
+          <StatBox label="Puzzles" value={ALL_PUZZLES.length} />
+          <StatBox label="Legends" value={CHAMPION_GAMES.length} />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// ===== OPENINGS SCREEN =====
+function OpeningsScreen({ onBack }: { onBack: () => void }) {
+  const [cat, setCat] = useState('all');
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const filtered = useMemo(() => cat === 'all' ? ALL_OPENINGS : ALL_OPENINGS.filter((o: any) => o.category === cat), [cat]);
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.gameHeader}>
+        <TouchableOpacity onPress={onBack} style={{ padding: 8 }}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}><Text style={styles.cardTitle}>Opening Explorer</Text><Text style={{ color: '#888', fontSize: 12 }}>{filtered.length} openings</Text></View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, marginBottom: 8 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
+        {CATS.map((c) => (
+          <TouchableOpacity key={c.key} style={[styles.chip, cat === c.key && styles.chipActive]} onPress={() => setCat(c.key)}>
+            <Text style={[styles.chipText, cat === c.key && styles.chipTextActive]}>{c.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
         {filtered.map((o: any) => (
           <TouchableOpacity key={o.opening_id} style={styles.openingCard} onPress={() => setExpanded(expanded === o.opening_id ? null : o.opening_id)}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -220,7 +315,7 @@ function LearnScreen() {
             {expanded === o.opening_id && (
               <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#333' }}>
                 <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Key Ideas:</Text>
-                {o.main_ideas?.map((idea: string, i: number) => <Text key={i} style={{ color: '#CCC', fontSize: 13, marginBottom: 3 }}>{'\u2022'} {idea}</Text>)}
+                {o.main_ideas?.map((idea: string, i: number) => <Text key={i} style={{ color: '#CCC', fontSize: 13, marginBottom: 3 }}>{"\u2022"} {idea}</Text>)}
                 {o.famous_games?.[0] && <Text style={{ color: '#888', fontSize: 12, marginTop: 8, fontStyle: 'italic' }}>Notable: {o.famous_games[0]}</Text>}
               </View>
             )}
@@ -231,12 +326,249 @@ function LearnScreen() {
   );
 }
 
+// ===== LEGEND SCREEN (List) =====
+function LegendScreen({ onSelectGame, onBack }: { onSelectGame: (game: any) => void; onBack: () => void }) {
+  const [filter, setFilter] = useState('all');
+  const champions = useMemo(() => [...new Set(CHAMPION_GAMES.map((g: any) => g.champion))], []);
+  const filtered = useMemo(() => filter === 'all' ? CHAMPION_GAMES : CHAMPION_GAMES.filter((g: any) => g.champion === filter), [filter]);
+  const diffColor = (d: string) => d === 'hard' ? '#E74C3C' : d === 'medium' ? '#F39C12' : '#2ECC71';
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.gameHeader}>
+        <TouchableOpacity onPress={onBack} style={{ padding: 8 }}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}><Text style={styles.cardTitle}>Win Like a Legend</Text><Text style={{ color: '#888', fontSize: 12 }}>{CHAMPION_GAMES.length} champion positions</Text></View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, marginBottom: 8 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
+        <TouchableOpacity style={[styles.chip, filter === 'all' && styles.chipActive]} onPress={() => setFilter('all')}>
+          <Text style={[styles.chipText, filter === 'all' && styles.chipTextActive]}>All</Text>
+        </TouchableOpacity>
+        {champions.map((c) => (
+          <TouchableOpacity key={c} style={[styles.chip, filter === c && styles.chipActive]} onPress={() => setFilter(c)}>
+            <Text style={[styles.chipText, filter === c && styles.chipTextActive]}>{(c as string).split(' ').pop()}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {filtered.map((game: any, idx: number) => (
+          <TouchableOpacity key={game.id || idx} style={styles.openingCard} onPress={() => onSelectGame(game)}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <View style={{ flex: 1 }}><Text style={styles.cardTitle}>{game.champion}</Text><Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>vs {game.opponent} ({game.year})</Text></View>
+              <View style={[styles.diffBadge, { backgroundColor: `${diffColor(game.difficulty)}20` }]}>
+                <Text style={{ color: diffColor(game.difficulty), fontSize: 10, fontWeight: 'bold' }}>{game.difficulty?.toUpperCase()}</Text>
+              </View>
+            </View>
+            <Text style={{ color: '#AAA', fontSize: 13, lineHeight: 18, marginBottom: 8 }} numberOfLines={2}>{game.description}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '600', textTransform: 'capitalize' }}>{(game.theme || '').replace(/_/g, ' ')}</Text>
+              <Text style={{ color: '#555', fontSize: 11 }}>{game.event}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// ===== LEGEND GAME SCREEN (Interactive) =====
+function LegendGameScreen({ game, onBack }: { game: any; onBack: () => void }) {
+  const chessRef = useRef(new Chess(game.fen));
+  const [fen, setFen] = useState(game.fen);
+  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+  const [validMoves, setValidMoves] = useState<string[]>([]);
+  const [status, setStatus] = useState<'solving' | 'correct' | 'wrong'>('solving');
+  const [showHint, setShowHint] = useState(false);
+
+  const handleSquarePress = useCallback((sq: string) => {
+    if (status !== 'solving') return;
+    const chess = chessRef.current;
+    const piece = chess.get(sq as any);
+    if (piece && piece.color === chess.turn()) {
+      ChessSounds.select();
+      const m = chess.moves({ square: sq as any, verbose: true });
+      setSelectedSquare(sq);
+      setValidMoves(m.map(x => x.to));
+    } else if (selectedSquare && validMoves.includes(sq)) {
+      const mp = chess.get(selectedSquare as any);
+      let promo: string | undefined;
+      if (mp?.type === 'p' && (sq[1] === '8' || sq[1] === '1')) promo = 'q';
+      try {
+        const mv = chess.move({ from: selectedSquare as any, to: sq as any, promotion: promo as any });
+        if (mv) {
+          const cleanSan = mv.san.replace(/[+#]/g, '');
+          const cleanTarget = (game.winningMove || '').replace(/[+#]/g, '');
+          if (cleanSan === cleanTarget) {
+            ChessSounds.checkmate();
+            setFen(chess.fen());
+            setStatus('correct');
+            setSelectedSquare(null);
+            setValidMoves([]);
+            let idx = 0;
+            const playNext = () => {
+              if (!game.nextMoves || idx >= game.nextMoves.length) return;
+              setTimeout(() => {
+                try { chess.move(game.nextMoves[idx]); setFen(chess.fen()); } catch {}
+                idx++;
+                playNext();
+              }, 800);
+            };
+            playNext();
+          } else {
+            chess.undo();
+            ChessSounds.invalid();
+            setStatus('wrong');
+            setSelectedSquare(null);
+            setValidMoves([]);
+          }
+        }
+      } catch { setSelectedSquare(null); setValidMoves([]); }
+    } else {
+      setSelectedSquare(null);
+      setValidMoves([]);
+    }
+  }, [selectedSquare, validMoves, status, game]);
+
+  const handleRetry = () => {
+    chessRef.current.load(game.fen);
+    setFen(game.fen);
+    setSelectedSquare(null);
+    setValidMoves([]);
+    setStatus('solving');
+    setShowHint(false);
+  };
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.gameHeader}>
+        <TouchableOpacity onPress={onBack} style={{ padding: 8 }}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={styles.cardTitle}>{game.champion} vs {game.opponent}</Text>
+          <Text style={{ color: '#888', fontSize: 12 }}>{game.event} {game.year}</Text>
+        </View>
+        <TouchableOpacity onPress={() => setShowHint(!showHint)} style={{ padding: 8 }}><Ionicons name="help-circle" size={24} color="#FFD700" /></TouchableOpacity>
+      </View>
+
+      {showHint && (
+        <View style={{ backgroundColor: 'rgba(255,215,0,0.1)', marginHorizontal: 16, padding: 12, borderRadius: 12, marginBottom: 8 }}>
+          <Text style={{ color: '#FFD700', fontWeight: '600' }}>Hint: {(game.theme || '').replace(/_/g, ' ')}</Text>
+        </View>
+      )}
+
+      <View style={{ alignItems: 'center', paddingVertical: 6 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: status === 'correct' ? '#2ECC71' : status === 'wrong' ? '#E74C3C' : '#FFF' }}>
+          {status === 'solving' ? 'Find the winning move!' : status === 'correct' ? 'Brilliant!' : 'Not quite - try again!'}
+        </Text>
+      </View>
+
+      <View style={{ alignItems: 'center', paddingHorizontal: 16 }}>
+        <ChessBoard chess={chessRef.current} selectedSquare={selectedSquare} validMoves={validMoves} onSquarePress={handleSquarePress} disabled={status === 'correct'} />
+      </View>
+
+      {status === 'correct' && (
+        <View style={{ margin: 16, backgroundColor: 'rgba(46,204,113,0.15)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(46,204,113,0.3)' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Ionicons name="checkmark-circle" size={24} color="#2ECC71" />
+            <Text style={{ color: '#2ECC71', fontSize: 18, fontWeight: 'bold', marginLeft: 8 }}>{game.winningMove}!</Text>
+          </View>
+          <Text style={{ color: '#CCC', fontSize: 14, lineHeight: 20 }}>{game.description}</Text>
+        </View>
+      )}
+
+      {status === 'wrong' && (
+        <View style={{ margin: 16, backgroundColor: 'rgba(231,76,60,0.15)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(231,76,60,0.3)' }}>
+          <Text style={{ color: '#E74C3C', fontWeight: '600', marginBottom: 4 }}>Think like {game.champion}!</Text>
+          <Text style={{ color: '#888', fontSize: 13 }}>The theme is: {(game.theme || '').replace(/_/g, ' ')}</Text>
+        </View>
+      )}
+
+      <View style={{ flexDirection: 'row', padding: 16, gap: 12, marginTop: 'auto' as any }}>
+        {(status === 'wrong' || status === 'correct') && (
+          <TouchableOpacity style={styles.btn} onPress={handleRetry}>
+            <Ionicons name="refresh" size={20} color="#FFF" /><Text style={styles.btnTxt}>Retry</Text>
+          </TouchableOpacity>
+        )}
+        {status === 'correct' && (
+          <TouchableOpacity style={[styles.btn, { backgroundColor: '#FFD700' }]} onPress={onBack}>
+            <Ionicons name="arrow-forward" size={20} color="#1a1a2e" /><Text style={[styles.btnTxt, { color: '#1a1a2e' }]}>Next Legend</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// ===== ROADMAP SCREEN =====
+function RoadmapScreen({ onBack }: { onBack: () => void }) {
+  const [view, setView] = useState<'3' | '9'>('3');
+  const data = view === '3' ? ROADMAP_DATA.short : [...ROADMAP_DATA.short, ...ROADMAP_DATA.extended];
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.gameHeader}>
+        <TouchableOpacity onPress={onBack} style={{ padding: 8 }}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}><Text style={styles.cardTitle}>Smart Roadmap</Text><Text style={{ color: '#888', fontSize: 12 }}>Your path to mastery</Text></View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: '#16213e', borderRadius: 12, padding: 3 }}>
+        <TouchableOpacity style={[{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' }, view === '3' && { backgroundColor: '#FFD700' }]} onPress={() => setView('3')}>
+          <Text style={{ fontWeight: '600', fontSize: 14, color: view === '3' ? '#1a1a2e' : '#888' }}>3-Month</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' }, view === '9' && { backgroundColor: '#FFD700' }]} onPress={() => setView('9')}>
+          <Text style={{ fontWeight: '600', fontSize: 14, color: view === '9' ? '#1a1a2e' : '#888' }}>9-Month</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {data.map((m, i) => (
+          <View key={m.month} style={{ flexDirection: 'row', marginBottom: 16 }}>
+            <View style={{ width: 40, alignItems: 'center' }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: m.color, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>{m.month}</Text>
+              </View>
+              {i < data.length - 1 && <View style={{ width: 2, flex: 1, backgroundColor: '#333', marginVertical: 4 }} />}
+            </View>
+            <View style={{ flex: 1, marginLeft: 12, backgroundColor: '#16213e', borderRadius: 16, padding: 16, borderLeftWidth: 3, borderLeftColor: m.color }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>{m.title}</Text>
+                <View style={{ backgroundColor: `${m.color}20`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                  <Text style={{ color: m.color, fontSize: 11, fontWeight: 'bold' }}>ELO {m.target}</Text>
+                </View>
+              </View>
+              <Text style={{ color: m.color, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Focus: {m.focus}</Text>
+              {m.goals.map((g, j) => (
+                <View key={j} style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Ionicons name="checkmark-circle-outline" size={15} color="#666" style={{ marginTop: 2 }} />
+                  <Text style={{ color: '#CCC', fontSize: 13, marginLeft: 8, flex: 1 }}>{g}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 // ===== PROFILE SCREEN =====
 function ProfileScreen() {
-  const { stats, loadStats } = useLocalStore();
+  const { stats, isGodMode, loadStats, setUsername } = useLocalStore();
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+
+  useEffect(() => { setNameInput(stats.username || ''); }, [stats.username]);
+
+  const handleSave = () => {
+    setUsername(nameInput.trim());
+    setEditing(false);
+  };
+
   const handleReset = () => {
     if (Platform.OS === 'web') {
-      if (confirm('Reset all stats?')) {
+      if (confirm('Reset all stats and progress?')) {
         try { localStorage.removeItem('chess_stats'); } catch(e) {}
         loadStats();
       }
@@ -252,16 +584,55 @@ function ProfileScreen() {
     }
   };
 
+  const memberColor = isGodMode ? '#FF6B35' : '#FFD700';
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.pad20}>
         <View style={{ alignItems: 'center', marginBottom: 24 }}>
-          <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#FFD700', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 50, color: '#1a1a2e' }}>{'\u2654'}</Text>
+          <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: isGodMode ? '#FF6B35' : '#FFD700', alignItems: 'center', justifyContent: 'center', borderWidth: isGodMode ? 3 : 0, borderColor: '#FFD700' }}>
+            <Text style={{ fontSize: 48, color: '#1a1a2e' }}>{isGodMode ? '\u{1F451}' : '\u2654'}</Text>
           </View>
-          <Text style={[styles.h1, { marginTop: 12 }]}>Player</Text>
-          <View style={[styles.badge, { marginTop: 12 }]}><Ionicons name="star" size={14} color="#FFD700" /><Text style={styles.badgeText}>ALL ACCESS</Text></View>
+
+          {editing ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 8 }}>
+              <TextInput
+                style={{ backgroundColor: '#16213e', color: '#FFF', fontSize: 18, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, width: 200, textAlign: 'center', borderWidth: 1, borderColor: '#333' }}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Enter username"
+                placeholderTextColor="#555"
+                autoFocus
+                onSubmitEditing={handleSave}
+              />
+              <TouchableOpacity onPress={handleSave} style={{ padding: 12, backgroundColor: '#FFD700', borderRadius: 12 }}>
+                <Ionicons name="checkmark" size={20} color="#1a1a2e" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => { setEditing(true); setNameInput(stats.username || ''); }} style={{ alignItems: 'center' }}>
+              <Text style={[styles.h1, { marginTop: 12 }]}>{stats.username || 'Tap to set username'}</Text>
+              {!stats.username && <Ionicons name="pencil" size={16} color="#888" style={{ marginTop: 4 }} />}
+            </TouchableOpacity>
+          )}
+
+          <View style={[styles.badge, { marginTop: 12, backgroundColor: `${memberColor}15`, borderWidth: 1, borderColor: `${memberColor}40` }]}>
+            <Ionicons name={isGodMode ? 'shield-checkmark' : 'star'} size={14} color={memberColor} />
+            <Text style={[styles.badgeText, { color: memberColor }]}>{isGodMode ? 'OWNER \u2022 GOD MODE' : 'ALL ACCESS'}</Text>
+          </View>
         </View>
+
+        {isGodMode && (
+          <View style={{ backgroundColor: 'rgba(255,107,53,0.1)', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,107,53,0.3)' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Ionicons name="shield-checkmark" size={20} color="#FF6B35" />
+              <Text style={{ color: '#FF6B35', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>GOD MODE ACTIVE</Text>
+            </View>
+            <Text style={{ color: '#CCC', fontSize: 13, lineHeight: 20 }}>
+              Permanent Owner access granted. All AI levels including LETHAL unlocked. All content accessible. All features enabled forever.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.statsRow}>
           <StatBox label="Games" value={stats.gamesPlayed} />
@@ -270,12 +641,22 @@ function ProfileScreen() {
           <StatBox label="Rating" value={stats.puzzleRating} />
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: 16, padding: 16, marginTop: 24, borderWidth: 1, borderColor: 'rgba(255,215,0,0.3)' }}>
+        {stats.gamesPlayed > 0 && (
+          <View style={{ backgroundColor: '#16213e', borderRadius: 16, padding: 16, marginTop: 12 }}>
+            <Text style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Win Rate</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text style={{ color: '#FFD700', fontSize: 28, fontWeight: 'bold' }}>{Math.round(stats.gamesWon / stats.gamesPlayed * 100)}</Text>
+              <Text style={{ color: '#888', fontSize: 16, marginLeft: 2 }}>%</Text>
+            </View>
+          </View>
+        )}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: 'rgba(255,215,0,0.3)' }}>
           <Ionicons name="information-circle" size={24} color="#FFD700" />
-          <Text style={{ flex: 1, marginLeft: 12, fontSize: 14, color: '#CCC', lineHeight: 20 }}>All progress is saved locally in your browser. No account needed!</Text>
+          <Text style={{ flex: 1, marginLeft: 12, fontSize: 14, color: '#CCC', lineHeight: 20 }}>All progress saved locally. No account needed!</Text>
         </View>
 
-        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(231,76,60,0.1)', borderRadius: 12, padding: 16, marginTop: 24 }} onPress={handleReset}>
+        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(231,76,60,0.1)', borderRadius: 12, padding: 16, marginTop: 16 }} onPress={handleReset}>
           <Ionicons name="trash" size={20} color="#E74C3C" />
           <Text style={{ fontSize: 16, color: '#E74C3C', fontWeight: '600', marginLeft: 8 }}>Reset All Stats</Text>
         </TouchableOpacity>
@@ -318,12 +699,10 @@ function GameScreen({ mode, aiLevel, onBack }: { mode: GameMode; aiLevel: string
             const result = await searchMove(chess.fen(), aiLevel, movesPlayedRef.current);
             if (cancelled) return;
             if (result.san) {
-              const tp = chess.get(result.san as any);
               chess.move(result.san);
               moved = true;
               setSearchInfo(result.isBook ? 'Book move' : `Depth ${result.depth} | ${(result.nodes||0).toLocaleString()} nodes`);
             } else if (result.from && result.to) {
-              const tp = chess.get(result.to as any);
               chess.move({ from: result.from as any, to: result.to as any, promotion: result.promotion as any });
               moved = true;
               setSearchInfo(result.isBook ? 'Book move' : `Depth ${result.depth} | ${(result.nodes||0).toLocaleString()} nodes`);
@@ -475,7 +854,7 @@ function PuzzleScreen({ difficulty, onBack }: { difficulty: string; onBack: () =
   const [isOpponentMoving, setIsOpponentMoving] = useState(false);
 
   const loadPuzzle = useCallback(() => {
-    const pool = PUZZLES.filter((p: any) => p.difficulty === difficulty);
+    const pool = ALL_PUZZLES.filter((p: any) => p.difficulty === difficulty);
     if (pool.length === 0) return;
     const p = pool[Math.floor(Math.random() * pool.length)];
     setPuzzle(p);
